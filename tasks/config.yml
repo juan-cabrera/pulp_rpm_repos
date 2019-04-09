@@ -1,0 +1,18 @@
+---
+
+- debug:
+    msg: "Starting configuration tasks"
+
+- name: config | Add repositories
+  command: ~/create_repo --repo "{{ item.repo }}" --remote "{{ item.remote }}" --href "{{ item.remote_url }}" --port ":{{ pulp_api_port }}" --policy "{{ item.policy }}"
+  loop: "{{ pulp_repos }}"
+  when: item.state is not defined or item.state == 'present'
+  become: yes
+  become_user: "{{ pulp_repo_user }}"
+
+- name: config | Remove repositories
+  command: ~/remove_repo --repo "{{ item.repo }}" --remote "{{ item.remote }}"
+  loop: "{{ pulp_repos }}"
+  when: item.state is defined and item.state == 'absent'
+  become: yes
+  become_user: "{{ pulp_repo_user }}"

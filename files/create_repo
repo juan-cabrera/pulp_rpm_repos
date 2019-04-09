@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# Usage info
+show_help() {
+cat << EOF
+Usage: ${0##*/} [-h] --repo REPO_NAME --remote REMOTE_NAME --href [--port PORT]
+    -h                   Display this help and exit
+    --repo REPO_NAME     Name of the local repo
+    --remote REMOTE_NAME Name of the remote repo to be sync with local one
+    --href REMOTE_URL    URL of the remote repository
+    --port PORT          (Optional) API port number default to $PORT
+    --policy POLICY      (Optional) immediate (default), on_demand
+EOF
+}
+
+wait_task() {
+
+    echo $2
+    state=$(http $PORT$1 | jq -r '.state')
+    while [ "$state" == "running" ]; do
+        sleep 5
+        state=$(http $PORT$1 | jq -r '.state')
+        echo $state
+    done
+
+}
+
+for i in "$@"; do
+    case $i in
+        --repo)
+        REPO_NAME="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        --remote)
+        REMOTE_NAME="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        --href)
+        REMOTE_URL="$2"
+        shift # past argument
+        shift # past value
+        ;;
+         --port)
+        PORT="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        -h|-\?|--help)
+        show_help    # Display usage 
+        exit
+        ;;
+     esac
+done
+
+# Check variables
+if [ -z ${REPO_NAME+x} ]; then
+   echo "A variable is unset";
+   show_help
+   exit
+fi
+if [ -z ${REMOTE_NAME+x} ]; then
+   echo "A variable is unset";
+   show_help
+   exit
+fi
+if [ -z ${REMOTE_URL+x} ]; then
+   echo "A variable is unset";
+   show_help
+   exit
+fi
+
+# set default if null
+PORT=${PORT-:8000}
+POLICY=${POLICY-immediate}
+
+# Create a new local repository and get its HREF
+export REPO_HREF=$(http POST $PORT/pulp/api/v3/repositories/ name="$REPO_NAME" | jq -r '._href')
+# Add a new remote repository and get its HREF
+export REMOTE_HREF=$(http POST $PORT/pulp/api/v3/remotes/rpm/rpm/ name="$REMOTE_NAME" url="$REMOTE_URL" policy="$POLICY" | jq -r '._href')
+# Synchronize repos
+export TASK=$(http $PORT${REMOTE_HREF}sync/ repository=$REPO_HREF | jq -r '.task')
+
+wait_task $TASK "Waiting for sync to finish ..."
+
+# Create a rpm Publisher and get its HREF
+export PUBLISHER_HREF=$(http POST $PORT/pulp/api/v3/publishers/rpm/rpm/ name="$REMOTE_NAME" | jq -r '._href')
+# Create a Publication of local repository and get its local HREF
+export TASK=$(http POST $PORT${PUBLISHER_HREF}publish/ repository="$REPO_HREF" | jq -r '.task')
+
+wait_task $TASK "Waiting for Publication to finish ..."
+
+# Get HREF of Local Publication
+export PUBLICATION_HREF=$(http $PORT/pulp/api/v3/publications/ | jq -r --arg PUBLISHER_HREF "$PUBLISHER_HREF" '.results[] | select(.publisher==$PUBLISHER_HREF) | ._href')
+
+# Distribute the repo
+http POST $PORT/pulp/api/v3/distributions/ name="$REPO_NAME" base_path="$REMOTE_NAME" publication=$PUBLICATION_HREF
+

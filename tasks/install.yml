@@ -1,0 +1,23 @@
+---
+
+- debug:
+    msg: "Starting installation tasks"
+
+- name: install | Add API credentials
+  template:
+    src: netrc
+    dest: ~/.netrc
+    mode: 0600
+  become: yes
+  become_user: "{{ pulp_repo_user }}"
+
+- name: install | copy scripts
+  copy:
+    src: "{{ item }}"
+    dest: "~/{{ item }}"
+    mode: 0700
+  become: yes
+  become_user: "{{ pulp_repo_user }}"
+  loop:
+    - create_repo
+    - remove_repo

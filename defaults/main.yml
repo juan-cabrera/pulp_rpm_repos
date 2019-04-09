@@ -1,0 +1,5 @@
+---
+# defaults file for ptci.dummy_role
+
+pulp_repo_user: vagrant
+pulp_repos: []

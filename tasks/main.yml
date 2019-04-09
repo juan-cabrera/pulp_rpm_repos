@@ -1,0 +1,14 @@
+---
+# tasks file for pulp-repo
+
+- include_vars: "{{item}}"
+  with_first_found:
+    - "{{ansible_distribution}}.yml"
+    - "{{ansible_os_family}}.yml"
+  ignore_errors: yes
+  tags: always
+
+- include: install.yml
+  tags: role::pulp_repo:install
+- include: config.yml
+  tags: role::pulp_repo:config
