@@ -21,3 +21,4 @@
   loop:
     - create_repo
     - remove_repo
+    - check_repo
