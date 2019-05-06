@@ -18,12 +18,21 @@ wait_task() {
     echo $2
     state=$(http $PORT$1 | jq -r '.state')
     while [ "$state" == "running" ]; do
-        sleep 5
+        sleep 10
         state=$(http $PORT$1 | jq -r '.state')
         echo $state
     done
 
+    if [ "$state" == "failed" ]; then
+        echo "TASK FAILED"
+        http $PORT$1
+        exit 1
+    fi
 }
+
+# set default values
+PORT=":24817"
+POLICY="immediate"
 
 for i in "$@"; do
     case $i in
@@ -71,16 +80,12 @@ if [ -z ${REMOTE_URL+x} ]; then
    exit
 fi
 
-# set default if null
-PORT=${PORT-:8000}
-POLICY=${POLICY-immediate}
-
 # Create a new local repository and get its HREF
 export REPO_HREF=$(http POST $PORT/pulp/api/v3/repositories/ name="$REPO_NAME" | jq -r '._href')
 # Add a new remote repository and get its HREF
 export REMOTE_HREF=$(http POST $PORT/pulp/api/v3/remotes/rpm/rpm/ name="$REMOTE_NAME" url="$REMOTE_URL" policy="$POLICY" | jq -r '._href')
 # Synchronize repos
-export TASK=$(http $PORT${REMOTE_HREF}sync/ repository=$REPO_HREF | jq -r '.task')
+export TASK=$(http POST $PORT${REMOTE_HREF}sync/ repository=$REPO_HREF | jq -r '.task')
 
 wait_task $TASK "Waiting for sync to finish ..."
 
@@ -92,7 +97,7 @@ export TASK=$(http POST $PORT${PUBLISHER_HREF}publish/ repository="$REPO_HREF" |
 wait_task $TASK "Waiting for Publication to finish ..."
 
 # Get HREF of Local Publication
-export PUBLICATION_HREF=$(http $PORT/pulp/api/v3/publications/ | jq -r --arg PUBLISHER_HREF "$PUBLISHER_HREF" '.results[] | select(.publisher==$PUBLISHER_HREF) | ._href')
+export PUBLICATION_HREF=$(http $PORT/pulp/api/v3/publications/ | jq -r --arg PUBLISHER_HREF "$PUBLISHER_HREF" '.results[] | select(.publisher == $PUBLISHER_HREF) | ._href')
 
 # Distribute the repo
 http POST $PORT/pulp/api/v3/distributions/ name="$REPO_NAME" base_path="$REMOTE_NAME" publication=$PUBLICATION_HREF
