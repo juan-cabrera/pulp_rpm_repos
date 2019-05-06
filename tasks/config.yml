@@ -16,3 +16,9 @@
   when: item.state is defined and item.state == 'absent'
   become: yes
   become_user: "{{ pulp_repo_user }}"
+
+- name: config | Stop firewall (TODO Config firewall)
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: no
