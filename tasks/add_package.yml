@@ -1,0 +1,22 @@
+---
+
+- name: config | create temporary directory for "{{ repo.name }}"
+  file:
+    path: "/tmp/packages/{{ repo.name }}"
+    state: directory
+  become: yes
+  become_user: "{{ pulp_repo_user }}"
+
+- name: config | copy pakages for repo "{{ repo.name }}"
+  copy:
+    src: "packages/{{ item }}"
+    dest: "/tmp/packages/{{ repo.name }}/{{ item }}"
+  loop: "{{ repo.packages }}"
+  become: yes
+  become_user: "{{ pulp_repo_user }}"
+
+- name: config | Add packages in repo "{{ repo.name }}"
+  shell: "~/add_package --repo {{ repo.name }} --package /tmp/packages/{{ repo.name }}/{{ item }}"
+  loop: "{{ repo.packages }}"
+  become: yes
+  become_user: "{{ pulp_repo_user }}"

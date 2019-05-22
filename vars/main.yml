@@ -1,2 +1,7 @@
 ---
-# vars file for ptci.dummy_role
+# vars file for pulp-repos
+
+# this is harcoded in pulp ansible roles
+# I create it in case they add a variable
+pulp_admin_user: admin
+

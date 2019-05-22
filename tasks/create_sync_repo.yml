@@ -1,0 +1,114 @@
+---
+
+- name: config | Create repo {{ item.repo }}
+  uri:
+    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/repositories/
+    user: "{{ pulp_admin_user }}"
+    password: "{{ pulp_default_admin_password }}"
+    method: POST
+    body: { "name":"{{ item.repo }}" }
+    force_basic_auth: yes
+    status_code: 201,400
+    body_format: json
+    return_content: yes
+  changed_when: repo.status == 201
+  register: repo
+
+- name: config | Create remote {{ item.remote }}
+  uri:
+    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/remotes/rpm/rpm/
+    user: "{{ pulp_admin_user }}"
+    password: "{{ pulp_default_admin_password }}"
+    method: POST
+    body: { "name":"{{ item.remote }}","url":"{{ item.remote_url }}","policy": "{{ item.policy }}" }
+    force_basic_auth: yes
+    status_code: 201,400
+    body_format: json
+    return_content: yes
+  changed_when: remote.status == 201
+  register: remote
+
+- name: config | Remote already exists => get its HREF
+  uri:
+    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/remotes/rpm/rpm/?name={{ item.remote }}
+    user: "{{ pulp_admin_user }}"
+    password: "{{ pulp_default_admin_password }}"
+    method: GET
+    force_basic_auth: yes
+    status_code: 200
+    body_format: json
+    return_content: yes
+  register: remote
+  when: remote.json.results is not defined
+
+- debug:
+    msg: WARNING NO syc and publication will be done":" REPO "{{ item.repo }}" already exists 
+  when: repo.json._href is not defined
+
+- block:
+
+    - name: config | sycn repo {{ item.repo }} with remote {{ item.remote }}
+      uri:
+        url: http://localhost:{{ pulp_api_port }}{{ remote.json.results[0]._href }}sync/
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: POST
+        body: { "repository":"{{ repo.json._href }}" }
+        force_basic_auth: yes
+        status_code: 202
+        body_format: json
+        return_content: yes
+      changed_when: sync.status == 202
+      register: sync
+
+    - name: config | Waiting end of sync repo {{ item.repo }} with remote {{ item.remote }}
+      include_tasks: wait_task.yml
+      vars:
+        task_href: "{{ sync.json.task }}"
+
+    - name: config | Create publication for repo {{ item.repo }}
+      uri:
+        url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/publications/rpm/rpm/
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: POST
+        body: { "repository":"{{ repo.json._href}}"}
+        force_basic_auth: yes
+        status_code: 202
+        body_format: json
+        return_content: yes
+      changed_when: publication.status == 202
+      register: publication
+
+    - name: config | Waiting end of repo {{ item.repo }} publication
+      include_tasks: wait_task.yml
+      vars:
+        task_href: "{{ publication.json.task }}"
+
+    - name: config | Get publication HREF
+      uri:
+        url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/publications/rpm/rpm/?repository_version={{ repo.json._href }}/versions/1/
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: GET
+        force_basic_auth: yes
+        status_code: 200
+        body_format: json
+        return_content: yes
+      register: publication
+
+    - name: config | Create distribution for repo {{ item.repo }}
+      uri:
+        url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/distributions/rpm/rpm/
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: POST
+        body: { "name":"item.distribution","base_path":"{{ item.base_path }}","publication":"{{ publication.json.results[0]._href }}" }
+        force_basic_auth: yes
+        status_code: 202
+        body_format: json
+        return_content: yes
+      changed_when: distribution.status == 202
+      register: distribution
+
+  when: repo.json._href is defined

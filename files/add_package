@@ -1,0 +1,98 @@
+#!/bin/bash
+
+# Usage info
+show_help() {
+cat << EOF
+Usage: ${0##*/} [-h] --repo REPO_NAME --pakage PACKAGE [--port PORT]
+    -h                   Display this help and exit
+    --repo REPO_NAME     Name of the repo to add the package. Must exist
+    --package PACKAGE    Package file to add to the repo
+    --port PORT          (Optional) API port number default to $PORT
+EOF
+}
+
+PORT=":24817"
+
+for i in "$@"; do
+    case $i in
+        --repo)
+        REPO_NAME="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        --package)
+        PACKAGE="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        --port)
+        PORT="$2"
+        shift # past argument
+        shift # past value
+        ;;
+        -h|-\?|--help)
+        show_help    # Display usage 
+        exit
+        ;;
+     esac
+done
+
+if [ -z ${REPO_NAME+x} ]; then
+   echo "A variable is unset";
+   show_help
+   exit
+fi
+if [ -z ${PACKAGE+x} ]; then
+   echo "A variable is unset";
+   show_help
+   exit
+fi
+
+# Get pakage name
+PACKAGE_NAME=${PACKAGE##*/}
+
+# get repo HREF
+REPO_HREF=$(http $PORT/pulp/api/v3/repositories/ | jq -r --arg REPO_NAME "${REPO_NAME}" '.results[] | select(.name == $REPO_NAME) | ._href')
+if [ -z ${REPO_HREF+x} ]; then
+    echo "repo does not exist"
+    exit 1
+fi
+
+# check if artifact already exists
+SHA512=$(sha512sum ${PACKAGE} | awk '{print $1}')
+ARTIFACT_REF=$(http $PORT/pulp/api/v3/artifacts/?sha512=$SHA512 | jq -r --arg SHA512 "$SHA512" '.results[] | ._href')
+
+if [[ -z $ARTIFACT_REF ]]; then
+    echo "adding rpm artifact"
+    ARTIFACT_REF=$(http --form POST $PORT/pulp/api/v3/artifacts/ file@${PACKAGE} | jq -r '._href')
+else
+    echo "rpm artifact already exists"
+fi
+
+# check if content already exists
+CONTENT_HREF=$(http $PORT/pulp/api/v3/content/rpm/packages/ | jq --arg PACKAGE "${PACKAGE_NAME}" '.results[] | select(.location_href == $PACKAGE) | ._href')
+
+if [[ -z $CONTENT_HREF ]]; then
+    echo "adding rpm content"
+    CONTENT_HREF=\"$(http POST $PORT/pulp/api/v3/content/rpm/packages/ _artifact="$ARTIFACT_REF" filename=${PACKAGE_NAME} relative_path=${PACKAGE_NAME} | jq -r '._href')\"
+else
+    # Create rpm content
+    echo "rpm content already exists"
+fi
+ 
+LAST_VERSION_REF=$(http ${PORT}${REPO_HREF} | jq -r --arg REPO_NAME "${REPO_NAME}" '._latest_version_href')
+
+if [[ $LAST_VERSION_REF = "null" ]]; then
+    # new repo => no last version
+    LOCATION_HREF=""
+else
+    LOCATION_HREF=$(http $PORT/pulp/api/v3/content/rpm/packages/?repository_version=$LAST_VERSION_REF \
+                    | jq -r --arg PACKAGE "${PACKAGE_NAME}" '.results[] | select(.location_href == $PACKAGE) | .location_href')
+fi
+
+if [[ $LOCATION_HREF == $PACKAGE_NAME ]]; then
+    echo "Package already in repo"
+else
+    echo "Adding package in repo"
+    http POST ${PORT}${REPO_HREF}versions/ add_content_units:="[${CONTENT_HREF}]" | jq -r
+fi

@@ -22,3 +22,10 @@
     - create_repo
     - remove_repo
     - check_repo
+    - add_package
+
+- name: install | install yum utils for developpment if need
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ pulp_repo_yum_utils }}"

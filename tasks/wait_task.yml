@@ -1,0 +1,27 @@
+---
+
+- name: config | Waiting end of task
+  uri:
+    url: http://localhost:{{ pulp_api_port }}{{ task_href }}
+    user: admin
+    password: "{{ pulp_default_admin_password }}"
+    method: GET
+    force_basic_auth: yes
+    status_code: 200
+  register: task
+  until: task.json.state != "running"
+  changed_when: "'completed' in task.json.state"
+  retries: 120
+  delay: 10
+
+- name: config | Check end of task
+  uri:
+    url: http://localhost:{{ pulp_api_port }}{{ task_href }}
+    user: admin
+    password: "{{ pulp_default_admin_password }}"
+    method: GET
+    force_basic_auth: yes
+    status_code: 200
+  register: task
+  failed_when: "not 'completed' in task.json.state"
+

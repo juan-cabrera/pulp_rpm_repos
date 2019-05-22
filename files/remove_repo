@@ -5,10 +5,11 @@
 # Usage info
 show_help() {
 cat << EOF
-Usage: ${0##*/} [-h] --repo REPO_NAME --remote REMOTE_NAME [--port PORT]
+Usage: ${0##*/} [-h] --repo REPO_NAME --pub  PUB_NAME [--remote REMOTE_NAME] [--port PORT]
     -h                   Display this help and exit
     --repo REPO_NAME     Name of the local repo
-    --remote REMOTE_NAME Name of the remote repo to be sync with local one
+    --pub  PUB_NAME      Name of the publisher
+    --remote REMOTE_NAME (Optional) Name of the remote repo which was sync with local one
     --port PORT          (Optional) API port number default to $PORT
 EOF
 }
@@ -22,12 +23,17 @@ for i in "$@"; do
         shift # past argument
         shift # past value
         ;;
+        --pub)
+        PUB_NAME="$2"
+        shift # past argument
+        shift # past value
+        ;;
         --remote)
         REMOTE_NAME="$2"
         shift # past argument
         shift # past value
         ;;
-        --port)
+          --port)
         PORT="$2"
         shift # past argument
         shift # past value
@@ -44,25 +50,39 @@ if [ -z ${REPO_NAME+x} ]; then
    show_help
    exit
 fi
-if [ -z ${REMOTE_NAME+x} ]; then
+
+if [ -z ${PUB_NAME+x} ]; then
    echo "A variable is unset";
    show_help
    exit
 fi
 
-export REPO_HREF=$(http $PORT/pulp/api/v3/repositories/ | jq -r --arg REPO_NAME "$REPO_NAME" '.results[] | select(.name == $REPO_NAME) | ._href')
-export REMOTE_HREF=$(http $PORT/pulp/api/v3/remotes/rpm/rpm/ | jq -r --arg REMOTE_NAME "$REMOTE_NAME" '.results[] | select(.name == $REMOTE_NAME) | ._href')
-export PUBLISHER_HREF=$(http $PORT/pulp/api/v3/publishers/rpm/rpm/ | jq -r --arg REMOTE_NAME "$REMOTE_NAME" '.results[] | select(.name == $REMOTE_NAME) | ._href')
-export PUBLICATION_HREF=$(http $PORT/pulp/api/v3/publications/ | jq -r --arg PUBLISHER_HREF "$PUBLISHER_HREF" '.results[] | select(.publisher == $PUBLISHER_HREF) | ._href')
-export DISTRI_HREF=$(http $PORT/pulp/api/v3/distributions/ | jq -r --arg PUBLICATION_HREF "$PUBLICATION_HREF" '.results[] | select(.publication == $PUBLICATION_HREF) | ._href')
+REPO_HREF=$(http $PORT/pulp/api/v3/repositories/ | jq -r --arg REPO_NAME "$REPO_NAME" '.results[] | select(.name == $REPO_NAME) | ._href')
 
-echo "removing DISTRIBUTION"
+if [ ! -z ${REMOTE_NAME+x} ]; then
+  REMOTE_HREF=$(http $PORT/pulp/api/v3/remotes/rpm/rpm/ | jq -r --arg REMOTE_NAME "$REMOTE_NAME" '.results[] | select(.name == $REMOTE_NAME) | ._href')
+  echo "REMOTE $REMOTE_HREF"
+fi
+
+PUBLISHER_HREF=$(http $PORT/pulp/api/v3/publishers/rpm/rpm/ | jq -r --arg PUB_NAME "$PUB_NAME" '.results[] | select(.name == $PUB_NAME) | ._href')
+
+PUBLICATION_HREF=$(http $PORT/pulp/api/v3/publications/ | jq -r --arg PUBLISHER_HREF "$PUBLISHER_HREF" '.results[] | select(.publisher == $PUBLISHER_HREF) | ._href')
+
+DISTRI_HREF=$(http $PORT/pulp/api/v3/distributions/ | jq -r --arg PUBLICATION_HREF "$PUBLICATION_HREF" '.results[] | select(.publication == $PUBLICATION_HREF) | ._href')
+
+echo "removing DISTRIBUTION $DISTRI_HREF"
 http DELETE $PORT$DISTRI_HREF
-echo "removing PUBLICATION"
+
+echo "removing PUBLICATION $PUBLICATION_HREF"
 http DELETE $PORT$PUBLICATION_HREF
-echo "removing PUBLISHER"
+
+echo "removing PUBLISHER $PUBLISHER_HREF"
 http DELETE $PORT$PUBLISHER_HREF
-echo "removing REMOTE"
-http DELETE $PORT$REMOTE_HREF
-echo "removing REPO"
+
+if [ ! -z ${REMOTE_NAME+x} ]; then
+    echo "removing REMOTE $REMOTE_HREF"
+    http DELETE $PORT$REMOTE_NAME
+fi
+
+echo "removing REPO $REPO_HREF"
 http DELETE $PORT$REPO_HREF

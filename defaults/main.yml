@@ -1,5 +1,7 @@
 ---
-# defaults file for ptci.dummy_role
+# defaults file for ptci.pulp-repos role
 
 pulp_repo_user: vagrant
-pulp_repos: []
+pulp_sync_repos: []
+pulp_local_repos: []
+pulp_repo_yum_utils: []
