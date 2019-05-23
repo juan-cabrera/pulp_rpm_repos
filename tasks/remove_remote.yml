@@ -1,0 +1,25 @@
+---
+
+- name: config | Get remote {{ item.remote }} HREF
+  uri:
+    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/remotes/rpm/rpm/?name={{ item.remote }}
+    user: admin
+    password: "{{ pulp_default_admin_password }}"
+    method: GET
+    force_basic_auth: yes
+    status_code: 200
+    return_content: yes
+  register: remote
+
+- name: config | Remove remote {{ item.remote }}
+  uri:
+    url: http://localhost:{{ pulp_api_port }}{{ remote.json.results[0]._href }}
+    user: admin
+    password: "{{ pulp_default_admin_password }}"
+    method: DELETE
+    force_basic_auth: yes
+    status_code: 202
+    return_content: yes
+  changed_when: result.status == 202
+  register: result
+  when: remote.json.results[0] is defined

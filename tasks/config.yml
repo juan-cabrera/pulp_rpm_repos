@@ -3,15 +3,20 @@
 - debug:
     msg: "Starting configuration tasks"
 
-- name: config | Add sync repositories
-  include_tasks: create_sync_repo.yml
-  loop: "{{ pulp_sync_repos }}"
-  when: item.state is not defined or item.state == 'present'
-
 - name: config | Remove sync repositories
   include_tasks: remove_repo.yml
   loop: "{{ pulp_sync_repos }}"
   when: item.state is defined and item.state == 'absent'
+
+- name: config | Remove sync remotes
+  include_tasks: remove_remote.yml
+  loop: "{{ pulp_sync_repos }}"
+  when: item.state is defined and item.state == 'absent'
+
+- name: config | Add sync repositories
+  include_tasks: create_sync_repo.yml
+  loop: "{{ pulp_sync_repos }}"
+  when: item.state is not defined or item.state == 'present'
 
 #- name: config | Add local repositories
 #  command: "http POST :{{ pulp_api_port }}/pulp/api/v3/repositories/ name={{ item.name }}"

@@ -87,7 +87,7 @@
 
     - name: config | Get publication HREF
       uri:
-        url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/publications/rpm/rpm/?repository_version={{ repo.json._href }}/versions/1/
+        url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/publications/rpm/rpm/?repository_version={{ repo.json._latest_version_href }}
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
         method: GET
@@ -97,18 +97,46 @@
         return_content: yes
       register: publication
 
-    - name: config | Create distribution for repo {{ item.repo }}
+    - name: config | Check distribution already exists and get its HREF
+      uri:
+        url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/distributions/rpm/rpm/?name={{ item.distribution }}
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: GET
+        force_basic_auth: yes
+        status_code: 200,404
+        body_format: json
+        return_content: yes
+      register: distribution_check
+
+    - name: config | Re-attach to a distribution for repo {{ item.repo }}
+      uri:
+        url: http://localhost:{{ pulp_api_port }}{{ distribution_check.json.results[0]._href }}
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: PATCH
+        body: { "name":"{{ item.distribution }}","base_path":"{{ item.base_path }}","publication":"{{ publication.json.results[0]._href }}" }
+        force_basic_auth: yes
+        status_code: 202
+        body_format: json
+        return_content: yes
+      changed_when: patch_result.status == 202
+      register: patch_result
+      when: distribution_check.json.count == 1
+
+    - name: config | Create distribution {{ item.distribution }} for repo {{ item.repo }} 
       uri:
         url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/distributions/rpm/rpm/
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
         method: POST
-        body: { "name":"item.distribution","base_path":"{{ item.base_path }}","publication":"{{ publication.json.results[0]._href }}" }
+        body: { "name":"{{ item.distribution }}","base_path":"{{ item.base_path }}","publication":"{{ publication.json.results[0]._href }}" }
         force_basic_auth: yes
         status_code: 202
         body_format: json
         return_content: yes
       changed_when: distribution.status == 202
       register: distribution
+      when: distribution_check.json.count == 0
 
   when: repo.json._href is defined
