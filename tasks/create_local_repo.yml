@@ -1,0 +1,107 @@
+---
+
+- name: config | {{ item.repo }} | Create local repo
+  uri:
+    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/repositories/
+    user: "{{ pulp_admin_user }}"
+    password: "{{ pulp_default_admin_password }}"
+    method: POST
+    body: { "name":"{{ item.repo }}" }
+    force_basic_auth: yes
+    status_code: 201,400
+    body_format: json
+    return_content: yes
+  changed_when: repo.status == 201
+  register: repo
+
+- debug:
+    var: repo
+
+- debug:
+    msg: WARNING NO publication will be done":" REPO "{{ item.repo }}" already exists
+  when: repo.json._href is not defined
+
+- block:
+
+    - name: config | {{ item.repo }} | create temporary directory for repo packages
+      file:
+        path: "/tmp/packages/{{ item.base_path }}"
+        state: directory
+
+    - name: config | {{ item.repo }} Add rpm packages to repo
+      include_tasks: add_package-sort.yml
+      vars:
+        repo_href: "{{ repo.json._href }}"
+        repo_name: "{{ item.repo }}"
+        pkg_path: "{{ item.base_path }}"
+      loop: "{{ item.packages }}"
+      loop_control:
+        loop_var: package
+
+    - name: config | {{ item.repo }} | Create publication for local repo
+      uri:
+        url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/publications/rpm/rpm/
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: POST
+        body: { "repository":"{{ repo.json._href}}"}
+        force_basic_auth: yes
+        status_code: 202
+        body_format: json
+        return_content: yes
+      changed_when: publication.status == 202
+      register: publication
+
+    - name: config | {{ item.repo }} | Waiting end of local repo publication
+      include_tasks: wait_task.yml
+      vars:
+        task_href: "{{ publication.json.task }}"
+
+    # TODO: use uri module and jinja2 filters to do the same
+    - name: config | {{ item.repo }} | Get publication HREF
+      shell: "http -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }} :{{ pulp_api_port }}/pulp/api/v3/publications/rpm/rpm/  | jq -r '.results[] | select(.repository_version | test(\"{{ repo.json.results[0]._href}}\")) | ._href'"
+      register: publication
+
+    - name: config | {{ item.repo }} | Check if distribution {{ item.distribution }} already exists and get its HREF
+      uri:
+        url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/distributions/rpm/rpm/?name={{ item.distribution }}
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: GET
+        force_basic_auth: yes
+        status_code: 200,404
+        body_format: json
+        return_content: yes
+      register: distribution_check
+
+    - name: config | {{ item.repo }} | Re-attach local repo to {{ item.distribution }} distribution
+      uri:
+        url: http://localhost:{{ pulp_api_port }}{{ distribution_check.json.results[0]._href }}
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: PATCH
+        body: { "name":"{{ item.distribution }}","base_path":"{{ item.base_path }}","publication":"{{ publication.stdout }}" }
+        force_basic_auth: yes
+        status_code: 202
+        body_format: json
+        return_content: yes
+      changed_when: patch_result.status == 202
+      register: patch_result
+      when: distribution_check.json.count == 1
+
+    - name: config | {{ item.repo }} | Create distribution {{ item.distribution }} for sync repo
+      uri:
+        url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/distributions/rpm/rpm/
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: POST
+        body: { "name":"{{ item.distribution }}","base_path":"{{ item.base_path }}","publication":"{{ publication.stdout }}" }
+        force_basic_auth: yes
+        status_code: 202
+        body_format: json
+        return_content: yes
+      changed_when: distribution.status == 202
+      register: distribution
+      when: distribution_check.json.count == 0
+
+  when: repo.json._href is defined

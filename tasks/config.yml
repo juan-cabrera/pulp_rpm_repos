@@ -8,6 +8,11 @@
   loop: "{{ pulp_sync_repos }}"
   when: item.state is defined and item.state == 'absent'
 
+- name: config | Remove local repositories
+  include_tasks: remove_repo.yml
+  loop: "{{ pulp_local_repos }}"
+  when: item.state is defined and item.state == 'absent'
+
 - name: config | Remove sync remotes
   include_tasks: remove_remote.yml
   loop: "{{ pulp_sync_repos }}"
@@ -18,17 +23,10 @@
   loop: "{{ pulp_sync_repos }}"
   when: item.state is not defined or item.state == 'present'
 
-#- name: config | Add local repositories
-#  command: "http POST :{{ pulp_api_port }}/pulp/api/v3/repositories/ name={{ item.name }}"
-#  loop: "{{ pulp_local_repos }}"
-#  become: yes
-#  become_user: "{{ pulp_repo_user }}"
-#
-#- name: config | Add rpm pakages to repos
-#  include_tasks: add_package.yml
-#  loop: "{{ pulp_local_repos }}"
-#  loop_control:
-#    loop_var: repo
+- name: config | Add local repositories
+  include_tasks: create_local_repo.yml
+  loop: "{{ pulp_local_repos }}"
+  when: item.state is not defined or item.state == 'present'
 
 - name: config | Stop firewall (TODO Config firewall)
   systemd:

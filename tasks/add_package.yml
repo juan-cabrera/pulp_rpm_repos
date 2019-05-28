@@ -1,22 +1,69 @@
 ---
 
-- name: config | create temporary directory for "{{ repo.name }}"
-  file:
-    path: "/tmp/packages/{{ repo.name }}"
-    state: directory
-  become: yes
-  become_user: "{{ pulp_repo_user }}"
-
-- name: config | copy pakages for repo "{{ repo.name }}"
+- name: config | {{ package }} | {{ repo_name }} | copy package
   copy:
-    src: "packages/{{ item }}"
-    dest: "/tmp/packages/{{ repo.name }}/{{ item }}"
-  loop: "{{ repo.packages }}"
-  become: yes
-  become_user: "{{ pulp_repo_user }}"
+    src: "packages/{{ package }}"
+    dest: "/tmp/packages/{{ repo_name }}/{{ package }}"
 
-- name: config | Add packages in repo "{{ repo.name }}"
-  shell: "~/add_package --repo {{ repo.name }} --package /tmp/packages/{{ repo.name }}/{{ item }}"
-  loop: "{{ repo.packages }}"
-  become: yes
-  become_user: "{{ pulp_repo_user }}"
+- name: config | {{ package }} {{ repo_name }} Get sha256 sum of package
+  stat:
+    path: "/tmp/packages/{{ repo_name }}/{{ package }}"
+    checksum_algorithm: sha256
+  register: st
+
+# uri can not be used as
+# body: "{{ lookup('file','{{ package }}') }}"  does not works with binary data
+# We need to use command
+
+- name: config | {{ package }} | {{ repo_name }} | Create artifact
+  shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }} POST :{{ pulp_api_port }}/pulp/api/v3/artifacts/ file@/tmp/packages/{{ repo_name }}/{{ package }} | jq -r '._href'" 
+  register: result
+  changed_when: "'artifacts' in result.stdout"
+
+- name: config | {{ package }} | {{ repo_name }} | Get the artifact HREF
+  uri:
+    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}
+    user: "{{ pulp_admin_user }}"
+    password: "{{ pulp_default_admin_password }}"
+    method: GET
+    force_basic_auth: yes
+    status_code: 200
+  register: artifact
+
+- name: config | {{ package }} | {{ repo_name }} | Add artifact in rpm contents
+  uri:
+    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/content/rpm/packages/
+    user: "{{ pulp_admin_user }}"
+    password: "{{ pulp_default_admin_password }}"
+    method: POST
+    body: { "_artifact":"{{ artifact.json.results[0]._href }}", "filename":"{{ package }}", "relative_path":"{{ package }}" }
+    force_basic_auth: yes
+    status_code: 201,400
+    body_format: json
+  changed_when: content.status == 201
+  register: content
+
+- name: config | {{ package }} | {{ repo_name }} | Get the content HREF
+  uri:
+    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/content/rpm/packages/?pkgId={{ st.stat.checksum }}
+    user: "{{ pulp_admin_user }}"
+    password: "{{ pulp_default_admin_password }}"
+    method: GET
+    force_basic_auth: yes
+    status_code: 200
+    failed_when: content_data.json.count != 1
+  register: content_data
+
+- name: config | {{ package }} | {{ repo_name }} | Add package in repo
+  uri:
+    url: http://localhost:{{ pulp_api_port }}{{ repo_href }}versions/
+    user: "{{ pulp_admin_user }}"
+    password: "{{ pulp_default_admin_password }}"
+    method: POST
+    body: { "add_content_units:":"[{{ content_data.json.results[0]._href }}]" }
+    force_basic_auth: yes
+    status_code: 202,400
+    body_format: json
+  changed_when: content.status == 202
+  register: content
+
