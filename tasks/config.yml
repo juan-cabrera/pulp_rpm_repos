@@ -27,9 +27,3 @@
   include_tasks: create_local_repo.yml
   loop: "{{ pulp_local_repos }}"
   when: item.state is not defined or item.state == 'present'
-
-- name: config | Stop firewall (TODO Config firewall)
-  systemd:
-    name: firewalld
-    state: stopped
-    enabled: no

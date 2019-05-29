@@ -2,7 +2,7 @@
 
 - name: config | Get remote {{ item.remote }} HREF
   uri:
-    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/remotes/rpm/rpm/?name={{ item.remote }}
+    url: "{{ pulp_api_server }}/pulp/api/v3/remotes/rpm/rpm/?name={{ item.remote }}"
     user: admin
     password: "{{ pulp_default_admin_password }}"
     method: GET
@@ -13,7 +13,7 @@
 
 - name: config | Remove remote {{ item.remote }}
   uri:
-    url: http://localhost:{{ pulp_api_port }}{{ remote.json.results[0]._href }}
+    url: "{{ pulp_api_server }}{{ remote.json.results[0]._href }}"
     user: admin
     password: "{{ pulp_default_admin_password }}"
     method: DELETE

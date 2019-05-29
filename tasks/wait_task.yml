@@ -2,8 +2,8 @@
 
 - name: config | Waiting end of task
   uri:
-    url: http://localhost:{{ pulp_api_port }}{{ task_href }}
-    user: admin
+    url: "{{ pulp_api_server }}{{ task_href }}"
+    user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
     force_basic_auth: yes
@@ -14,10 +14,10 @@
   retries: 120
   delay: 10
 
-- name: config | Check end of task
+- name: config | Check end task status
   uri:
-    url: http://localhost:{{ pulp_api_port }}{{ task_href }}
-    user: admin
+    url: "{{ pulp_api_server }}{{ task_href }}"
+    user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
     force_basic_auth: yes

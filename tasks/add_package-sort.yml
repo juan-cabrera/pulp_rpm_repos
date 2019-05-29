@@ -1,33 +1,25 @@
 ---
 
-- name: config | {{ package }} | {{ repo_name }} | copy package
-  copy:
-    src: "packages/{{ pkg_path }}/{{ package }}"
-    dest: "/tmp/packages/{{ pkg_path }}/{{ package }}"
+- set_fact:
+    pkg_file: "{{ pulp_pkg_path }}/{{ pkg_path }}/{{ package }}"
 
 # uri can not be used because
 # body: "{{ lookup('file','{{ package }}') }}"  does not works with binary data
-# We need to use command
+# We need to use shell
 
+# for (< /dev/tty) see httpie issue https://github.com/jakubroztocil/httpie/issues/150
 - name: config | {{ package }} | {{ repo_name }} | One shoot upload pakage to repo
-  shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }} POST :{{ pulp_api_port }}/pulp/api/v3/rpm/upload/ file@/tmp/packages/{{ pkg_path }}/{{ package }} repository={{ repo_href }} | jq -r '.task' "
+  shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }} POST {{ pulp_api_server }}/pulp/api/v3/rpm/upload/ file@{{ pkg_file }} repository={{ repo_href }} < /dev/tty | jq -r '.task' "
   register: result
   changed_when: false
   failed_when: "'/pulp/api/v3/tasks' not in result.stdout"
 
-- debug:
-    var: result
-
-- name: config | {{ package }} | {{ repo_name }} | Check
+- name: config | {{ package }} | {{ repo_name }} | Get task
   uri:
-    url: http://localhost:{{ pulp_api_port }}{{ result.stdout }}
+    url: "{{ pulp_api_server }}{{ result.stdout }}"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
     force_basic_auth: yes
     status_code: 200
   register: task
-
-- debug:
-    var: task
-

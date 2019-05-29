@@ -16,13 +16,13 @@
 # We need to use command
 
 - name: config | {{ package }} | {{ repo_name }} | Create artifact
-  shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }} POST :{{ pulp_api_port }}/pulp/api/v3/artifacts/ file@/tmp/packages/{{ repo_name }}/{{ package }} | jq -r '._href'" 
+  shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }} POST {{ pulp_api_server }{{ pulp_api_server }}/pulp/api/v3/artifacts/ file@/tmp/packages/{{ repo_name }}/{{ package }} | jq -r '._href'" 
   register: result
   changed_when: "'artifacts' in result.stdout"
 
 - name: config | {{ package }} | {{ repo_name }} | Get the artifact HREF
   uri:
-    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}
+    url: "{{ pulp_api_server }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
@@ -32,7 +32,7 @@
 
 - name: config | {{ package }} | {{ repo_name }} | Add artifact in rpm contents
   uri:
-    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/content/rpm/packages/
+    url: "{{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: POST
@@ -45,7 +45,7 @@
 
 - name: config | {{ package }} | {{ repo_name }} | Get the content HREF
   uri:
-    url: http://localhost:{{ pulp_api_port }}/pulp/api/v3/content/rpm/packages/?pkgId={{ st.stat.checksum }}
+    url: "{{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/?pkgId={{ st.stat.checksum }}"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
@@ -56,7 +56,7 @@
 
 - name: config | {{ package }} | {{ repo_name }} | Add package in repo
   uri:
-    url: http://localhost:{{ pulp_api_port }}{{ repo_href }}versions/
+    url: "{{ pulp_api_server }}{{ repo_href }}versions/"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: POST
