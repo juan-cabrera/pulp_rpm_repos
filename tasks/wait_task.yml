@@ -1,6 +1,6 @@
 ---
 
-- name: config | Waiting end of task
+- name: wait_task | Waiting end of task
   uri:
     url: "{{ pulp_api_server }}{{ task_href }}"
     user: "{{ pulp_admin_user }}"
@@ -14,7 +14,7 @@
   retries: 120
   delay: 10
 
-- name: config | Check end task status
+- name: wait_task | Check end task status
   uri:
     url: "{{ pulp_api_server }}{{ task_href }}"
     user: "{{ pulp_admin_user }}"
@@ -23,5 +23,6 @@
     force_basic_auth: yes
     status_code: 200
   register: task
-  failed_when: "not 'completed' in task.json.state"
-
+  failed_when:
+    - "(not 'completed' in task.json.state)"
+    - "(not 'already exists' in task.json.error.traceback)"

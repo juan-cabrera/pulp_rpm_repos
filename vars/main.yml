@@ -4,4 +4,3 @@
 # this is harcoded in pulp ansible roles
 # I create it in case they add a variable
 pulp_admin_user: admin
-

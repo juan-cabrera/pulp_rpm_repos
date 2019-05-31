@@ -1,6 +1,6 @@
 galaxy_info:
   author: Juan Cabrera
-  description: 
+  description:
   company: Université de Namur
 
   # If the issue tracker for your role is not on github, uncomment the
@@ -16,7 +16,7 @@ galaxy_info:
   # - CC-BY
   license: license (GPLv2, CC-BY, etc)
 
-  min_ansible_version: 1.2
+  min_ansible_version: 2.7.10
 
   # If this a Container Enabled role, provide the minimum Ansible Container version.
   # min_ansible_container_version:
@@ -27,13 +27,13 @@ galaxy_info:
   # this branch. If Travis integration is configured, only notifications for this
   # branch will be accepted. Otherwise, in all cases, the repo's default branch
   # (usually master) will be used.
-  #github_branch:
+  # github_branch:
 
   #
   # platforms is a list of platforms, and each platform has a name and a list of versions.
   #
   platforms:
-  - name: Centos 7
+  - name: Centos
     versions:
     - 7
 
@@ -49,6 +49,6 @@ galaxy_info:
     # NOTE: A tag is limited to a single word comprised of alphanumeric characters.
     #       Maximum 20 tags per role.
 
-dependencies: 
+dependencies:
   # List your role dependencies here, one per line. Be sure to remove the '[]' above,
   # if you add dependencies to this list.

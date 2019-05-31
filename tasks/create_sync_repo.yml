@@ -1,19 +1,19 @@
 ---
 
-- name: config | Create {{ item.repo }} sync repo
+- name: create_sync_repo | Create {{ item.repo }} sync repo
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/repositories/"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: POST
-    body: { "name":"{{ item.repo }}" }
+    body: {"name":"{{ item.repo }}"}
     force_basic_auth: yes
     status_code: 201,400
     body_format: json
-  changed_when: repo.status == 201
   register: repo
+  changed_when: repo.status == 201
 
-- name: config | Get repo {{ item.repo }} HREF
+- name: create_sync_repo | Get repo {{ item.repo }} HREF
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/repositories/?name={{ item.repo }}"
     user: "{{ pulp_admin_user }}"
@@ -23,45 +23,49 @@
     status_code: 200
   register: repo
 
-- name: config | Create {{ item.remote }} remote
+- name: create_sync_repo | Create {{ item.remote }} remote
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/remotes/rpm/rpm/"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: POST
-    body: { "name":"{{ item.remote }}","url":"{{ item.remote_url }}","policy": "{{ item.policy }}" }
+    body: {"name":"{{ item.remote }}", "url":"{{ item.remote_url }}", "policy": "{{ item.policy }}"}
     force_basic_auth: yes
     status_code: 201,400
     body_format: json
+  register: remote
   changed_when: remote.status == 201
 
-- name: config | Get {{ item.remote }} remote HREF
-  uri:
-    url: "{{ pulp_api_server }}/pulp/api/v3/remotes/rpm/rpm/?name={{ item.remote }}"
-    user: "{{ pulp_admin_user }}"
-    password: "{{ pulp_default_admin_password }}"
-    method: GET
-    force_basic_auth: yes
-    status_code: 200
-  register: remote
+- block:
+    - name: create_sync_repo | Get {{ item.remote }} remote HREF
+      uri:
+        url: "{{ pulp_api_server }}/pulp/api/v3/remotes/rpm/rpm/?name={{ item.remote }}"
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: GET
+        force_basic_auth: yes
+        status_code: 200
+      register: remote
 
-- name: config | Sycn {{ item.repo }} repo with {{ item.remote }} remote
-  uri:
-    url: "{{ pulp_api_server }}{{ remote.json.results[0]._href }}sync/"
-    user: "{{ pulp_admin_user }}"
-    password: "{{ pulp_default_admin_password }}"
-    method: POST
-    body: { "repository":"{{ repo.json.result[0]._href }}" }
-    force_basic_auth: yes
-    status_code: 202
-    body_format: json
-  changed_when: sync.status == 202
-  register: sync
+    - name: create_sync_repo | Sycn {{ item.repo }} repo with {{ item.remote }} remote
+      uri:
+        url: "{{ pulp_api_server }}{{ remote.json.results[0]._href }}sync/"
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: POST
+        body: {"repository":"{{ repo.json.results[0]._href }}"}
+        force_basic_auth: yes
+        status_code: 202
+        body_format: json
+      register: sync
+      changed_when: sync.status == 202
 
-- name: config | Waiting end of {{ item.repo }} repo synchronisation with {{ item.remote }} remote 
-  include_tasks: wait_task.yml
-  vars:
-    task_href: "{{ sync.json.task }}"
+    - name: create_sync_repo | Waiting end of {{ item.repo }} repo synchronisation with {{ item.remote }} remote
+      include_tasks: wait_task.yml
+      vars:
+        task_href: "{{ sync.json.task }}"
 
-- name: config | {{ item.repo }} {{ item.remote }} Publish and Distribute 
-  include_tasks: publish_distribute.yml
+    - name: create_sync_repo | {{ item.repo }} {{ item.remote }} Publish and Distribute
+      include_tasks: publish_distribute.yml
+
+  when: item.sync | bool

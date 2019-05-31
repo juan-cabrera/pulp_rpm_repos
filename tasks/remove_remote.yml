@@ -1,6 +1,6 @@
 ---
 
-- name: config | Get remote {{ item.remote }} HREF
+- name: remove_remote | Get remote {{ item.remote }} HREF
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/remotes/rpm/rpm/?name={{ item.remote }}"
     user: admin
@@ -8,10 +8,9 @@
     method: GET
     force_basic_auth: yes
     status_code: 200
-    return_content: yes
   register: remote
 
-- name: config | Remove remote {{ item.remote }}
+- name: remove_remote | Remove remote {{ item.remote }}
   uri:
     url: "{{ pulp_api_server }}{{ remote.json.results[0]._href }}"
     user: admin
@@ -19,7 +18,6 @@
     method: DELETE
     force_basic_auth: yes
     status_code: 202
-    return_content: yes
   changed_when: result.status == 202
   register: result
   when: remote.json.results[0] is defined

@@ -1,19 +1,19 @@
 ---
 
-- name: config | Create {{ item.repo }} local repo
+- name: create_local_repo | Create {{ item.repo }} local repo
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/repositories/"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: POST
-    body: { "name":"{{ item.repo }}" }
+    body: {"name":"{{ item.repo }}"}
     force_basic_auth: yes
     status_code: 201,400
     body_format: json
   changed_when: repo.status == 201
   register: repo
 
-- name: config | Get repo {{ item.repo }} HREF
+- name: create_local_repo | Get repo {{ item.repo }} HREF
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/repositories/?name={{ item.repo }}"
     user: "{{ pulp_admin_user }}"
@@ -23,15 +23,16 @@
     status_code: 200
   register: repo
 
-- name: config | Add rpm packages to repo {{ item.repo }}
+- name: create_local_repo | Add rpm packages to repo {{ item.repo }}
   include_tasks: add_package-sort.yml
   vars:
     repo_href: "{{ repo.json.results[0]._href }}"
     repo_name: "{{ item.repo }}"
-    pkg_path: "{{ item.base_path }}"
+    base_path: "{{ item.base_path }}"
+    pkg_dir: "{{ item.pkg_dir }}"
   loop: "{{ item.packages }}"
   loop_control:
     loop_var: package
 
-- name: config | {{ item.repo }} Publish and Distribute
+- name: create_local_repo | {{ item.repo }} Publish and Distribute
   include_tasks: publish_distribute.yml
