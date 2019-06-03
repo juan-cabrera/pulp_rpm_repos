@@ -65,7 +65,8 @@
       vars:
         task_href: "{{ sync.json.task }}"
 
-    - name: create_sync_repo | {{ item.repo }} {{ item.remote }} Publish and Distribute
-      include_tasks: publish_distribute.yml
-
   when: item.sync | bool
+
+- name: create_sync_repo | {{ item.repo }} Publish and Distribute
+  include_tasks: publish_distribute.yml
+
