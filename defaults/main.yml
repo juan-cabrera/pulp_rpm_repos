@@ -1,5 +1,10 @@
 ---
 # defaults file for pulp_rpm_repos role
 
+# Admin user is harcoded in pulp ansible roles
+pulp_admin_user: admin
+pulp_default_admin_password: password
+pulp_api_server: http://localhost:24817
+
 pulp_sync_repos: []
 pulp_local_repos: []
