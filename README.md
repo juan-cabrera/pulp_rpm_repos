@@ -1,25 +1,30 @@
 pulp_rpm_repos
 ==============
 
-A role to interact with a pulp-server, create and manage rpm repositories
+This role interacts with a pulp-server. It can create and manage rpm
+repositories.
 
 Install pulp-server using the
 [pulp_ansible](https://github.com/pulp/pulp_ansible) project
 
-This versions uses this versions:
+This role has been tested this versions of pulp:
 
+```yaml
     pulp_source_dir: "git+https://github.com/pulp/pulpcore.git@3.0.0rc2"
     pulp_plugin_source_dir: "git+https://github.com/pulp/pulpcore-plugin.git@0.1.0rc2"
     pulp_install_plugins:
       pulp-rpm:
         app_label: "rpm"
         source_dir: "git+https://github.com/pulp/pulp_rpm.git@3.0.0b3"
+```
 
 If you want to run the tasks of this role in a host different that the
 pulp-server. User this variables when installing the server
 
+```yaml
     pulp_api_host: 0.0.0.0
     pulp_content_bind: "0.0.0.0:24816"
+```
 
 This permit to access to the API interface from outside the pulp server
 
@@ -70,8 +75,8 @@ repositories:
         state: present
 ```
 
-To add repositories with with your own packages, add a list with repositories
-and packages:
+To add repositories with your own packages, add a list with repositories and
+packages:
 
 ```yaml
     pulp_local_repos:
@@ -106,7 +111,6 @@ Create the following `pulp_api.ylm` playbook with the pulp server adress and pas
 ```yaml
     - hosts: localhost
 
-
       vars:
         pulp_admin_user: admin
         pulp_default_admin_password: password
@@ -128,7 +132,7 @@ Create the following `pulp_api.ylm` playbook with the pulp server adress and pas
 
 And execute:
 
-```bash
+```sh
      ansible-playbook -c local playbooks/pulp_api.yml
 ```
 
