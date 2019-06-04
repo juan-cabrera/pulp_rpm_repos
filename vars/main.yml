@@ -1,5 +1,5 @@
 ---
-# vars file for pulp-repos
+# vars file for pulp_rpm_repos
 
 # this is harcoded in pulp ansible roles
 # I create it in case they add a variable

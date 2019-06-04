@@ -1,5 +1,5 @@
-pulp-repos
-==========
+pulp_rpm_repos
+==============
 
 A role to interact with a pulp-server and create rpm repositories
 

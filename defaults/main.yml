@@ -1,5 +1,5 @@
 ---
-# defaults file for pulp-repos role
+# defaults file for pulp_rpm_repos role
 
 pulp_sync_repos: []
 pulp_local_repos: []
