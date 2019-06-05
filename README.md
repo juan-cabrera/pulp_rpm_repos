@@ -1,13 +1,13 @@
 pulp_rpm_repos
 ==============
 
-This role interacts with a pulp-server. It can create and manage rpm
-repositories.
+This role interacts with a [pulp-server](https://pulpproject.org/). It helps to
+create and manage rpm repositories.
 
-Install pulp-server using the
+You can install the pulp-server using the
 [pulp_ansible](https://github.com/pulp/pulp_ansible) project
 
-This role has been tested this versions of pulp:
+This role has been tested with this versions of pulp:
 
 ```yaml
     pulp_source_dir: "git+https://github.com/pulp/pulpcore.git@3.0.0rc2"
@@ -18,8 +18,8 @@ This role has been tested this versions of pulp:
         source_dir: "git+https://github.com/pulp/pulp_rpm.git@3.0.0b3"
 ```
 
-If you want to run the tasks of this role in a host different that the
-pulp-server. User this variables when installing the server
+If you want to run the tasks of this role in a different host than the
+pulp-server, use this variables when installing the server
 
 ```yaml
     pulp_api_host: 0.0.0.0
@@ -31,7 +31,7 @@ This permit to access to the API interface from outside the pulp server
 Requirements
 ------------
 
-Install this packages in the host where the task are executed:
+Install this packages in the host where the tasks are executed:
 
   - httpie
   - jq
@@ -40,7 +40,7 @@ Install this packages in the host where the task are executed:
 Role Variables
 --------------
 
-To interact with the pulp server you need to set this variables
+To interact with the pulp server you need to set this variables:
 
 ```yaml
     pulp_admin_user: admin
@@ -48,10 +48,16 @@ To interact with the pulp server you need to set this variables
     pulp_api_server: http://localhost:24817
 ```
 
-`pulp_admin_user`
+* `pulp_admin_user`: Is the login name to connect to the API interface. This is
+   hard-coded in [pulp_ansible](https://github.com/pulp/pulp_ansible) installer.
+   So, this should not change.
+* `pulp_default_admin_password`: Is the password to connect to the API
+   interface.
+* `pulp_api_server`: the pulp server address and port.
 
-To add and synchronize repositories you can add a list of different
-repositories:
+### Synchronized repositories
+
+To add and synchronize repositories, add a list of repositories and its remotes:
 
 ```yaml
     pulp_sync_repos:
@@ -74,6 +80,28 @@ repositories:
         sync: yes
         state: present
 ```
+
+- `repo`: the name of the repository to create.
+- `repo_version`: the version of the repository that will be distributed.
+- `remote`: the name of the remote you want to synchronize.
+- `remote_url`: the address of the remote repository.
+- `policy`: **immediate** means that all the content is downloaded right
+  away.  **on_demand** the synchronization of a repository is faster and
+  downloads RPMs whenever they are requested by clients.
+- `base_path`: the path that will be added at the end of the distribution
+  address.
+- `distribution`: name of the distribution.
+- `sync`: synchronize the remote repository when executing the role. This will
+  increment the last version even if there has been no modifications in the
+  remote repository. It is recommended to set to **yes** at the creation and set
+  it to **no** until new packages versions are available in the remote server.
+- `state`: if **present**, then the repository and its remote are created or
+  nothing happens if they already exists. If **absent**, then the repository and
+  its remote are removed. When a repository is removed, all the related
+  publications are removed but not the distributions. The role also remove all
+  orphans packages not related to a publication.
+
+### Local repositories
 
 To add repositories with your own packages, add a list with repositories and
 packages:
@@ -103,10 +131,27 @@ packages:
         state: present
 ```
 
+- `repo`: the name of the repository to create.
+- `repo_version`: the version of the repository that will be distributed.
+- `packages`: a list of packages that will be added to the repository. If the
+  package already exist, nothing happens.
+- `pkg_dir`: the pre-path where to find the packages.
+- `base_path`: the path that will be added at the end of the distribution
+  address. Also the post-path where the role will find the packages. The full
+  path will be `{{ pkg_dir }}/{{ base_path }}/{{ package }}`
+- `distribution`: name of the distribution.
+- `state`: if **present**, then the repository is created or nothing happens if
+  it already exists. If **absent**, then the repository and its remote are
+  removed. When a repository is removed all the related publications are removed
+  but not the distributions. The role also removes all orphans packages not
+  related to a publication.
+
+
 Example Playbook
 ----------------
 
-Create the following `pulp_api.ylm` playbook with the pulp server adress and password:
+Create the following `pulp_api.ylm` playbook with the pulp server address and
+password:
 
 ```yaml
     - hosts: localhost
