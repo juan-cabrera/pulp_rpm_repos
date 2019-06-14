@@ -24,7 +24,7 @@
   register: repo
 
 - name: create_local_repo | Add rpm packages to repo {{ item.repo }}
-  include_tasks: add_package-sort.yml
+  include_tasks: add_package-short.yml
   vars:
     repo_href: "{{ repo.json.results[0]._href }}"
     repo_name: "{{ item.repo }}"
