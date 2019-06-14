@@ -8,17 +8,7 @@
     checksum_algorithm: sha256
   register: st
 
-# uri can not be used as
-# body: "{{ lookup('file','{{ package }}') }}"  does not works with binary data
-# We need to use command
-
-- name: add_package | {{ package }} | {{ repo_name }} | Create artifact
-  shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }}
-          POST {{ pulp_api_server }{{ pulp_api_server }}/pulp/api/v3/artifacts/ file@/tmp/packages/{{ repo_name }}/{{ package }} | jq -r '._href'"
-  register: result
-  changed_when: "'artifacts' in result.stdout"
-
-- name: add_package | {{ package }} | {{ repo_name }} | Get the artifact HREF
+- name: add_package | check if artifact for {{ package }} exist
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}"
     user: "{{ pulp_admin_user }}"
@@ -26,41 +16,71 @@
     method: GET
     force_basic_auth: yes
     status_code: 200
-  register: artifact
+  register: artifact_check
 
-- name: add_package | {{ package }} | {{ repo_name }} | Add artifact in rpm contents
-  uri:
-    url: "{{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/"
-    user: "{{ pulp_admin_user }}"
-    password: "{{ pulp_default_admin_password }}"
-    method: POST
-    body: {"_artifact":"{{ artifact.json.results[0]._href }}", "filename":"{{ package }}", "relative_path":"{{ package }}"}
-    force_basic_auth: yes
-    status_code: 201,400
-    body_format: json
-  changed_when: content.status == 201
-  register: content
+- block:
 
-- name: add_package | {{ package }} | {{ repo_name }} | Get the content HREF
-  uri:
-    url: "{{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/?pkgId={{ st.stat.checksum }}"
-    user: "{{ pulp_admin_user }}"
-    password: "{{ pulp_default_admin_password }}"
-    method: GET
-    force_basic_auth: yes
-    status_code: 200
-    failed_when: content_data.json.count != 1
-  register: content_data
+    # uri can not be used as
+    # body: "{{ lookup('file','{{ package }}') }}" does not works with binary
+    # data. We need to use shell module
+    - name: add_package | Create artifact for {{ package }}
+      shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }}
+              POST {{ pulp_api_server }}/pulp/api/v3/artifacts/ file@{{ pkg_file }} < /dev/tty | jq -r '._href'"
+      register: result
+      changed_when: "'artifacts' in result.stdout"
 
-- name: add_package | {{ package }} | {{ repo_name }} | Add package in repo
-  uri:
-    url: "{{ pulp_api_server }}{{ repo_href }}versions/"
-    user: "{{ pulp_admin_user }}"
-    password: "{{ pulp_default_admin_password }}"
-    method: POST
-    body: {"add_content_units:":"[{{ content_data.json.results[0]._href }}]"}
-    force_basic_auth: yes
-    status_code: 202,400
-    body_format: json
-  changed_when: content.status == 202
-  register: content
+    - name: add_package | Check and get artifact {{ package }} HREF
+      uri:
+        url: "{{ pulp_api_server }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}"
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: GET
+        force_basic_auth: yes
+        status_code: 200
+        failed_when: artifact.json.count != 1
+      register: artifact
+
+    - name: add_package | Add artifact {{ package }} in rpm contents
+      uri:
+        url: "{{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/"
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: POST
+        body: {"_artifact":"{{ artifact.json.results[0]._href }}",
+               "filename":"{{ package }}", "relative_path":"{{ package }}"}
+        force_basic_auth: yes
+        status_code: 201,400
+        body_format: json
+      changed_when: content.status == 201
+      register: content
+
+    - name: add_package | Add package {{ package }} in repo {{ repo_name }}
+      uri:
+        url: "{{ pulp_api_server }}{{ repo_href }}versions/"
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: POST
+        body: {"add_content_units:":'[\"{{ content.json._href }}\"]'}
+        force_basic_auth: yes
+        status_code: 202,400
+        body_format: json
+      changed_when: content.status == 202
+      register: content
+
+    - name: add_package-sort | Waiting end of task
+      include_tasks: wait_task.yml
+      vars:
+        task_href: "{{ content.json.task  }}"
+
+    - name: add_package | Check Task
+      uri:
+        url: "{{ pulp_api_server }}{{ content.json.task  }}"
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: GET
+        force_basic_auth: yes
+        status_code: 200
+        failed_when: artifact.json.count != 1
+      register: end_task
+
+  when: artifact_check.json.count == 0
