@@ -23,6 +23,9 @@
     status_code: 200
   register: repo
 
+- set_fact:
+    repo_tasks: []
+
 - name: create_local_repo | Add rpm packages to repo {{ item.repo }}
   include_tasks: add_package-short.yml
   vars:
@@ -33,6 +36,12 @@
   loop: "{{ item.packages }}"
   loop_control:
     loop_var: package
+
+- name: create_local_repo | Waiting end of tasks
+  include_tasks: wait_task.yml
+  vars:
+    task_href: "{{ item }}"
+  loop: "{{ repo_tasks }}"
 
 - name: create_local_repo | {{ item.repo }} Publish and Distribute
   include_tasks: publish_distribute.yml
