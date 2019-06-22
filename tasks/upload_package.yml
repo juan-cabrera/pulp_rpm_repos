@@ -1,0 +1,60 @@
+---
+
+- set_fact:
+    pkg_file: "{{ pkg_dir }}/{{ base_path }}/{{ package }}"
+
+- stat:
+    path: "{{ pkg_file }}"
+    checksum_algorithm: sha256
+  register: st
+
+- set_fact:
+    pkg_list: "{{ [pkg_list, {'name': package, 'pkgId': st.stat.checksum}] | flatten }}"
+
+- name: add_package | check if artifact for {{ package }} exist
+  uri:
+    url: "{{ pulp_api_server }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}"
+    user: "{{ pulp_admin_user }}"
+    password: "{{ pulp_default_admin_password }}"
+    method: GET
+    force_basic_auth: yes
+    status_code: 200
+  register: artifact_check
+
+- block:
+
+    # uri can not be used as
+    # body: "{{ lookup('file','{{ package }}') }}" does not works with binary
+    # data. We need to use shell module
+    - name: add_package | Create artifact for {{ package }}
+      shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }}
+              POST {{ pulp_api_server }}/pulp/api/v3/artifacts/ file@{{ pkg_file }} < /dev/tty | jq -r '._href'"
+      register: result
+      changed_when: "'artifacts' in result.stdout"
+
+    - name: add_package | Check and get artifact {{ package }} HREF
+      uri:
+        url: "{{ pulp_api_server }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}"
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: GET
+        force_basic_auth: yes
+        status_code: 200
+        failed_when: artifact.json.count != 1
+      register: artifact
+
+    - name: add_package | Add artifact {{ package }} in rpm contents
+      uri:
+        url: "{{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/"
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: POST
+        body: {"_artifact":"{{ artifact.json.results[0]._href }}",
+               "filename":"{{ package }}", "relative_path":"{{ package }}"}
+        force_basic_auth: yes
+        status_code: 201,400
+        body_format: json
+      changed_when: content.status == 201
+      register: content
+
+  when: artifact_check.json.count == 0
