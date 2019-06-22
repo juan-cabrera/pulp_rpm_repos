@@ -8,7 +8,7 @@
     checksum_algorithm: sha256
   register: st
 
-- name: add_package | check if artifact for {{ package }} exist
+- name: add_package | Check if artifact for {{ package }} exist
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}"
     user: "{{ pulp_admin_user }}"
@@ -21,30 +21,19 @@
 - block:
 
     # uri can not be used because
-    # body: "{{ lookup('file','{{ package }}') }}"  does not works with binary data
-    # We need to use shell
-    
-    # for (< /dev/tty) see httpie issue https://github.com/jakubroztocil/httpie/issues/150
+    # body: "{{ lookup('file','{{ package }}') }}"
+    # does not works with binary data. We need to use shell
+
+    # for (< /dev/tty) see:
+    # httpie issue https://github.com/jakubroztocil/httpie/issues/150
     - name: add_package-short | One shoot upload package {{ package }} in repo {{ repo_name }}
       shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }}
               POST {{ pulp_api_server }}/pulp/api/v3/rpm/upload/ file@{{ pkg_file }} repository={{ repo_href }} < /dev/tty | jq -r '.task'"
       register: result
       changed_when: false
       failed_when: "'/pulp/api/v3/tasks' not in result.stdout"
-    
-    - name: add_package-short | Get task
-      uri:
-        url: "{{ pulp_api_server }}{{ result.stdout }}"
-        user: "{{ pulp_admin_user }}"
-        password: "{{ pulp_default_admin_password }}"
-        method: GET
-        force_basic_auth: yes
-        status_code: 200
-      register: task
-    
-    - name: add_package-short | Waiting end of task
-      include_tasks: wait_task.yml
-      vars:
-        task_href: "{{ result.stdout  }}"
+
+    - set_fact:
+        repo_tasks: "{{ [repo_tasks, result.stdout] | flatten }}"
 
   when: artifact_check.json.count == 0
