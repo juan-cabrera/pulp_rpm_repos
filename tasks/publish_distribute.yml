@@ -10,7 +10,8 @@
     status_code: 200
   register: repo
 
-- fail:
+- name: publish_distribute | Repository not found
+  fail:
     msg: "\nERROR: repository {{ item.repo }} not found. You need to create it first.\n"
   when: repo.json.count != 1
 
@@ -36,7 +37,8 @@
         status_code: 200,404
       register: repo_version
 
-    - fail:
+    - name: publish_distribute | Repository version not found
+      fail:
         msg: "\nERROR: Repository version {{ item.repo_version }} does not exists in {{ item.repo }}.\n"
       when: repo_version.status == 404
 

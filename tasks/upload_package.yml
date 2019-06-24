@@ -1,17 +1,16 @@
 ---
 
-- set_fact:
-    pkg_file: "{{ pkg_dir }}/{{ base_path }}/{{ package }}"
-
-- stat:
+- name: upload_package | Get checksum
+  stat:
     path: "{{ pkg_file }}"
     checksum_algorithm: sha256
   register: st
 
-- set_fact:
+- name: upload_package | Store package name and Id
+  set_fact:
     pkg_list: "{{ [pkg_list, {'name': package, 'pkgId': st.stat.checksum}] | flatten }}"
 
-- name: add_package | check if artifact for {{ package }} exist
+- name: upload_package | check if artifact for {{ package }} exist
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}"
     user: "{{ pulp_admin_user }}"
@@ -26,13 +25,13 @@
     # uri can not be used as
     # body: "{{ lookup('file','{{ package }}') }}" does not works with binary
     # data. We need to use shell module
-    - name: add_package | Create artifact for {{ package }}
+    - name: upload_package | Create artifact for {{ package }}
       shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }}
               POST {{ pulp_api_server }}/pulp/api/v3/artifacts/ file@{{ pkg_file }} < /dev/tty | jq -r '._href'"
       register: result
       changed_when: "'artifacts' in result.stdout"
 
-    - name: add_package | Check and get artifact {{ package }} HREF
+    - name: upload_package | Check and get artifact {{ package }} HREF
       uri:
         url: "{{ pulp_api_server }}/pulp/api/v3/artifacts/?sha256={{ st.stat.checksum }}"
         user: "{{ pulp_admin_user }}"
@@ -43,7 +42,7 @@
         failed_when: artifact.json.count != 1
       register: artifact
 
-    - name: add_package | Add artifact {{ package }} in rpm contents
+    - name: upload_package | Add artifact {{ package }} in rpm contents
       uri:
         url: "{{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/"
         user: "{{ pulp_admin_user }}"

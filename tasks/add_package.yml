@@ -10,7 +10,8 @@
     status_code: 200
   register: content
 
-- fail:
+- name: add_package | Package content not found
+  fail:
     msg: "\nERROR: package content {{ package.name }} not found.\n"
   when: content.json.count == 0
 
@@ -40,7 +41,8 @@
       changed_when: task.status == 202
       register: task
 
-    - set_fact:
+    - name: add_package | Store task HREF
+      set_fact:
         repo_tasks: "{{ [repo_tasks, task.json.task] | flatten }}"
 
   when: repo.json.results[0]._latest_version_href == none
@@ -73,7 +75,8 @@
       register: task
       when: check.json.count == 0
 
-    - set_fact:
+    - name: add_package | Store task HREF
+      set_fact:
         repo_tasks: "{{ [repo_tasks, task.json.task] | flatten }}"
       when: check.json.count == 0
 

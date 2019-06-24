@@ -1,10 +1,11 @@
 ---
 # tasks file for pulp-repo
 
-- include_vars: "{{item}}"
+- name: main | include role variables
+  include_vars: "{{ item }}"
   with_first_found:
-    - "{{ansible_distribution}}.yml"
-    - "{{ansible_os_family}}.yml"
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
   ignore_errors: yes
   tags: always
 

@@ -25,5 +25,7 @@
 
 - name: config | Add local repositories
   include_tasks: create_local_repo.yml
+  vars:
+    repo_name: "{{ item.repo }}"
   loop: "{{ pulp_local_repos }}"
   when: item.state is not defined or item.state == 'present'

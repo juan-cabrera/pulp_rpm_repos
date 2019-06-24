@@ -1,21 +1,21 @@
 ---
 
-- name: create_local_repo | Create {{ item.repo }} local repo
+- name: create_local_repo | Create {{ repo_name }} local repo
   uri:
     url: "{{ pulp_api_server }}/pulp/api/v3/repositories/"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: POST
-    body: {"name":"{{ item.repo }}"}
+    body: {"name":"{{ repo_name }}"}
     force_basic_auth: yes
     status_code: 201,400
     body_format: json
   changed_when: repo.status == 201
   register: repo
 
-- name: create_local_repo | Get repo {{ item.repo }} HREF
+- name: create_local_repo | Get repo {{ repo_name }} HREF
   uri:
-    url: "{{ pulp_api_server }}/pulp/api/v3/repositories/?name={{ item.repo }}"
+    url: "{{ pulp_api_server }}/pulp/api/v3/repositories/?name={{ repo_name }}"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
@@ -23,32 +23,28 @@
     status_code: 200
   register: repo
 
-- set_fact:
+- name: create_local_repo | initialize variables
+  set_fact:
     repo_tasks: []
     pkg_list: []
 
-- name: create_local_repo | Upload rpm packages for repo {{ item.repo }}
+- name: create_local_repo | Upload rpm packages for repo {{ repo_name }}
   include_tasks: upload_package.yml
   vars:
     repo_href: "{{ repo.json.results[0]._href }}"
-    repo_name: "{{ item.repo }}"
-    base_path: "{{ item.base_path }}"
-    pkg_dir: "{{ item.pkg_dir }}"
+    pkg_file: "{{ item.pkg_dir }}/{{ item.base_path }}/{{ package }}"
   loop: "{{ item.packages }}"
   loop_control:
     loop_var: package
 
-- name: create_local_repo | Add rpm package to repo {{ item.repo }}
+- name: create_local_repo | Add rpm package to repo {{ repo_name }}
   include_tasks: add_package.yml
   vars:
     repo_href: "{{ repo.json.results[0]._href }}"
-    repo_name: "{{ item.repo }}"
+    repo_name: "{{ repo_name }}"
   loop: "{{ pkg_list }}"
   loop_control:
     loop_var: package
-
-- debug:
-    var: repo_tasks
 
 - name: create_local_repo | Waiting end of tasks
   include_tasks: wait_task.yml
@@ -57,5 +53,5 @@
   loop_control:
     loop_var: task_href
 
-- name: create_local_repo | {{ item.repo }} Publish and Distribute
+- name: create_local_repo | {{ repo_name }} Publish and Distribute
   include_tasks: publish_distribute.yml
