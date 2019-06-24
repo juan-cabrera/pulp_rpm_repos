@@ -41,7 +41,6 @@
   include_tasks: add_package.yml
   vars:
     repo_href: "{{ repo.json.results[0]._href }}"
-    repo_name: "{{ repo_name }}"
   loop: "{{ pkg_list }}"
   loop_control:
     loop_var: package
