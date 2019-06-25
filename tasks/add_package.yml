@@ -6,7 +6,7 @@
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 200
   register: content
 
@@ -21,7 +21,7 @@
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 200
   register: repo
 
@@ -35,8 +35,8 @@
         password: "{{ pulp_default_admin_password }}"
         method: POST
         body: {"add_content_units":"{{ [content.json.results[0]._href] }}"}
-        force_basic_auth: yes
-        status_code: 202,400
+        force_basic_auth: y
+        status_code: 202
         body_format: json
       changed_when: task.status == 202
       register: task
@@ -53,11 +53,13 @@
 
     - name: add_package | Check if package is already in repo
       uri:
-        url: "{{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/?repository_version={{ repo.json.results[0]._latest_version_href }}&pkgId={{ package.pkgId }}"
+        url: >
+          {{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/?repository_version={{
+           repo.json.results[0]._latest_version_href }}&pkgId={{ package.pkgId }}
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
         method: GET
-        force_basic_auth: yes
+        force_basic_auth: y
         status_code: 200
       register: check
 
@@ -68,8 +70,8 @@
         password: "{{ pulp_default_admin_password }}"
         method: POST
         body: {"add_content_units":"{{ [content.json.results[0]._href] }}"}
-        force_basic_auth: yes
-        status_code: 202,400
+        force_basic_auth: y
+        status_code: 202
         body_format: json
       changed_when: task.status == 202
       register: task

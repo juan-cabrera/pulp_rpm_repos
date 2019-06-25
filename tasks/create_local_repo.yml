@@ -7,7 +7,7 @@
     password: "{{ pulp_default_admin_password }}"
     method: POST
     body: {"name":"{{ repo_name }}"}
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 201,400
     body_format: json
   changed_when: repo.status == 201
@@ -19,11 +19,11 @@
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 200
   register: repo
 
-- name: create_local_repo | initialize variables
+- name: create_local_repo | Initialize variables
   set_fact:
     repo_tasks: []
     pkg_list: []
@@ -33,15 +33,34 @@
   vars:
     repo_href: "{{ repo.json.results[0]._href }}"
     pkg_file: "{{ item.pkg_dir }}/{{ item.base_path }}/{{ package }}"
-  loop: "{{ item.packages }}"
+  loop: "{{ item.add_packages }}"
   loop_control:
     loop_var: package
 
-- name: create_local_repo | Add rpm package to repo {{ repo_name }}
+- name: create_local_repo | Add rpm packages to repo {{ repo_name }}
   include_tasks: add_package.yml
   vars:
     repo_href: "{{ repo.json.results[0]._href }}"
   loop: "{{ pkg_list }}"
+  loop_control:
+    loop_var: package
+
+- name: create_local_repo | Waiting end of tasks
+  include_tasks: wait_task.yml
+  vars:
+  loop: "{{ repo_tasks }}"
+  loop_control:
+    loop_var: task_href
+
+- name: create_local_repo | Reset variables
+  set_fact:
+    repo_tasks: []
+
+- name: create_local_repo | Remove rpm packages to repo {{ repo_name }}
+  include_tasks: remove_package.yml
+  vars:
+    repo_href: "{{ repo.json.results[0]._href }}"
+  loop: "{{ item.remove_packages }}"
   loop_control:
     loop_var: package
 
