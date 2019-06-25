@@ -6,7 +6,7 @@
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 200
   register: repo
 
@@ -33,7 +33,7 @@
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
         method: GET
-        force_basic_auth: yes
+        force_basic_auth: y
         status_code: 200,404
       register: repo_version
 
@@ -51,7 +51,7 @@
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 200,404
   register: publication
 
@@ -80,7 +80,7 @@
         password: "{{ pulp_default_admin_password }}"
         method: POST
         body: {"repository_version":"{{ repo_version_href }}"}
-        force_basic_auth: yes
+        force_basic_auth: y
         status_code: 202
         body_format: json
       changed_when: publication.status == 202
@@ -97,7 +97,7 @@
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
         method: GET
-        force_basic_auth: yes
+        force_basic_auth: y
         status_code: 200
       register: task
 
@@ -113,7 +113,7 @@
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 200,404
     body_format: json
   register: distribution_check
@@ -125,7 +125,7 @@
     password: "{{ pulp_default_admin_password }}"
     method: POST
     body: {"name":"{{ item.distribution }}", "base_path":"{{ item.base_path }}", "publication":"{{ publication_href }}"}
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 202
     body_format: json
   changed_when: distribution.status == 202
@@ -139,7 +139,7 @@
     password: "{{ pulp_default_admin_password }}"
     method: PATCH
     body: {"name":"{{ item.distribution }}", "base_path":"{{ item.base_path }}", "publication":"{{ publication_href }}"}
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 202
     body_format: json
   changed_when: patch_result.status == 202

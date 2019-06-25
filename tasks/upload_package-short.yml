@@ -12,7 +12,7 @@
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 200
   register: artifact_check
 

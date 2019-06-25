@@ -7,7 +7,7 @@
     password: "{{ pulp_default_admin_password }}"
     method: POST
     body: {"name":"{{ item.repo }}"}
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 201,400
     body_format: json
   register: repo
@@ -19,7 +19,7 @@
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 200
   register: repo
 
@@ -30,7 +30,7 @@
     password: "{{ pulp_default_admin_password }}"
     method: POST
     body: {"name":"{{ item.remote }}", "url":"{{ item.remote_url }}", "policy": "{{ item.policy }}"}
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 201,400
     body_format: json
   register: remote
@@ -43,7 +43,7 @@
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
         method: GET
-        force_basic_auth: yes
+        force_basic_auth: y
         status_code: 200
       register: remote
 
@@ -54,7 +54,7 @@
         password: "{{ pulp_default_admin_password }}"
         method: POST
         body: {"repository":"{{ repo.json.results[0]._href }}"}
-        force_basic_auth: yes
+        force_basic_auth: y
         status_code: 202
         body_format: json
       register: sync

@@ -110,21 +110,24 @@ packages:
     pulp_local_repos:
       - repo: repo_a_name
         repo_version: 2
-        packages:
-          - pkg1a-version.release.arch.rpm
-          - pkg2a-version.release.arch.rpm
-          - pkg3a-version.release.arch.rpm
+        add_packages:
+          - pkg1a-version-release.arch.rpm
+          - pkg2a-version-release.arch.rpm
+          - pkg3a-version-release.arch.rpm
+        remove_packages: []
         pkg_dir: /path1/to/your/packages/
-        base_path: base path
+        base_path: base/path
         distribution: dist_a
         state: present
     
       - repo: repo_b_name
         repo_version: latest
-        packages:
-          - pkg1b-version.release.arch.rpm
-          - pkg2b-version.release.arch.rpm
-          - pkg3b-version.release.arch.rpm
+        add_packages:
+          - pkg1b-version-release.arch.rpm
+          - pkg2b-version-release.arch.rpm
+          - pkg3b-version-release.arch.rpm
+        remove_packages:
+          - pkg4b-version-release.arch.rpm
         pkg_dir: /path2/to/your/packages/
         base_path: base/path
         distribution: distri_b
@@ -150,35 +153,67 @@ packages:
 Example Playbook
 ----------------
 
-Create the following `pulp_api.ylm` playbook with the pulp server address and
+Create the following `pulp_api.yml` playbook with the pulp server address and
 password:
 
 ```yaml
     - hosts: localhost
 
-      vars:
-        pulp_admin_user: admin
-        pulp_default_admin_password: password
-        pulp_api_server: http://pulp-server:24817
-        pulp_sync_repos:
-        - repo: foo
-          repo_version: "latest"
-          remote: bar
-          remote_url: https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/
-          policy: immediate
-          base_path: arch/foo
-          distribution: bar
-          sync: yes
-          state: present
-
       roles:
          - { role: pulp_rpm_repos }
+```
+
+To sync a repository, create a `sync_repo_foo.yml` file
+
+```yaml
+    pulp_admin_user: admin
+    pulp_default_admin_password: password
+    pulp_api_server: http://pulp-server:24817
+
+    pulp_sync_repos:
+    - repo: foo
+      repo_version: "latest"
+      remote: bar
+      remote_url: https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-unsigned/
+      policy: immediate
+      base_path: arch/foo
+      distribution: bar
+      sync: yes
+      state: present
 ```
 
 And execute:
 
 ```sh
-     ansible-playbook -c local playbooks/pulp_api.yml
+     ansible-playbook -c local --extra-vars "@sync_repo_foo.yml" playbooks/pulp_api.yml
+```
+
+To create a repository and add rpm package, create a `local_repo_a.yml` file
+
+```yaml
+    pulp_admin_user: admin
+    pulp_default_admin_password: password
+    pulp_api_server: http://pulp-server:24817
+
+    pulp_local_repos:
+      - repo: repo_a_name
+        repo_version: 2
+        add_packages:
+          - pkg1a-version-release.arch.rpm
+          - pkg2a-version-release.arch.rpm
+          - pkg3a-version-release.arch.rpm
+        remove_packages:
+          - pkg4a-version-release.arch.rpm
+        pkg_dir: /path1/to/your/packages/
+        base_path: base/path
+        distribution: dist_a
+        state: present
+```
+
+And execute:
+
+```sh
+     ansible-playbook -c local --extra-vars "@local_repo_a.yml" playbooks/pulp_api.yml
 ```
 
 License

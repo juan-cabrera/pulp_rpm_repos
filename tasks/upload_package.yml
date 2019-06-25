@@ -16,7 +16,7 @@
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
-    force_basic_auth: yes
+    force_basic_auth: y
     status_code: 200
   register: artifact_check
 
@@ -26,8 +26,9 @@
     # body: "{{ lookup('file','{{ package }}') }}" does not works with binary
     # data. We need to use shell module
     - name: upload_package | Create artifact for {{ package }}
-      shell: "http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }}
-              POST {{ pulp_api_server }}/pulp/api/v3/artifacts/ file@{{ pkg_file }} < /dev/tty | jq -r '._href'"
+      shell: >
+        http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }}
+        POST {{ pulp_api_server }}/pulp/api/v3/artifacts/ file@{{ pkg_file }} < /dev/tty | jq -r '._href'
       register: result
       changed_when: "'artifacts' in result.stdout"
 
@@ -37,7 +38,7 @@
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
         method: GET
-        force_basic_auth: yes
+        force_basic_auth: y
         status_code: 200
         failed_when: artifact.json.count != 1
       register: artifact
@@ -50,7 +51,7 @@
         method: POST
         body: {"_artifact":"{{ artifact.json.results[0]._href }}",
                "filename":"{{ package }}", "relative_path":"{{ package }}"}
-        force_basic_auth: yes
+        force_basic_auth: y
         status_code: 201,400
         body_format: json
       changed_when: content.status == 201
