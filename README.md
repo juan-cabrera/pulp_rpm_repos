@@ -26,7 +26,8 @@ pulp-server, use this variables when installing the server
     pulp_content_bind: "0.0.0.0:24816"
 ```
 
-This permit to access to the API interface from outside the pulp server
+This permit to access to the API interface from outside the pulp server. Be
+sure that the firewall permit the access to the `24816` and `24817` ports.
 
 Requirements
 ------------

@@ -36,6 +36,7 @@
   register: remote
   changed_when: remote.status == 201
 
+
 - block:
     - name: create_sync_repo | Get {{ item.remote }} remote HREF
       uri:
@@ -65,7 +66,7 @@
       vars:
         task_href: "{{ sync.json.task }}"
 
-  when: item.sync | bool
+  when: item.sync | bool or item.sync == "y" or item.sync == "Y"
 
 - name: create_sync_repo | {{ item.repo }} Publish and Distribute
   include_tasks: publish_distribute.yml
