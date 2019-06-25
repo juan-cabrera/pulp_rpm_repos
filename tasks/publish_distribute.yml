@@ -15,6 +15,15 @@
     msg: "\nERROR: repository {{ item.repo }} not found. You need to create it first.\n"
   when: repo.json.count != 1
 
+- name: publish_distribute | Repository versions is empty
+  fail:
+    msg: |
+      ERROR: No Repository version exist for {{ item.repo }}.
+      In case it is a **new** sync repository be sure that sync is yes
+  when:
+    - item.repo_version == 'latest'
+    - repo.json.results[0]._latest_version_href == none
+
 - name: publish_distribute | Set latest version HREF
   set_fact:
     repo_version_href: "{{ repo.json.results[0]._latest_version_href }}"
