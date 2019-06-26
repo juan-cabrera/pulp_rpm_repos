@@ -1,8 +1,5 @@
 ---
 
-- debug:
-    var: package
-
 - name: remove_package | Get Package NVRA string (Name-Version-Release-Architecture)
   set_fact:
     name: "{{ package | regex_replace('(.+)-.+-.+\\..+\\.rpm', '\\1') }}"
@@ -22,24 +19,51 @@
     status_code: 200
   register: content
 
-# Remove package if content exist
+# If content exist check if it is in the repository
 - block:
 
-    - name: remove_package | Remove package {{ package }} in repo {{ repo_name }}
+    - name: remove_package | Get Last Version HREF for repo {{ repo_name }}
       uri:
-        url: "{{ pulp_api_server }}{{ repo_href }}versions/"
+        url: "{{ pulp_api_server }}/pulp/api/v3/repositories/?name={{ repo_name }}"
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
-        method: POST
-        body: {"remove_content_units":"{{ [content.json.results[0]._href] }}"}
+        method: GET
         force_basic_auth: y
-        status_code: 202
-        body_format: json
-      changed_when: task.status == 202
-      register: task
+        status_code: 200
+      register: repo
 
-    - name: remove_package | Store task HREF
-      set_fact:
-        repo_tasks: "{{ [repo_tasks, task.json.task] | flatten }}"
+    - name: remove_package | Check if package is already in repo {{ repo_name }}
+      uri:
+        url: >
+          {{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/?repository_version={{
+           repo.json.results[0]._latest_version_href }}&pkgId={{
+           content.json.results[0].pkgId }}
+        user: "{{ pulp_admin_user }}"
+        password: "{{ pulp_default_admin_password }}"
+        method: GET
+        force_basic_auth: y
+        status_code: 200
+      register: check
 
+    # Remove package if present in repository
+    - block:
+
+        - name: remove_package | Remove package {{ package }} in repo {{ repo_name }}
+          uri:
+            url: "{{ pulp_api_server }}{{ repo_href }}versions/"
+            user: "{{ pulp_admin_user }}"
+            password: "{{ pulp_default_admin_password }}"
+            method: POST
+            body: {"remove_content_units":"{{ [content.json.results[0]._href] }}"}
+            force_basic_auth: y
+            status_code: 202
+            body_format: json
+          changed_when: task.status == 202
+          register: task
+
+        - name: remove_package | Store task HREF
+          set_fact:
+            repo_tasks: "{{ [repo_tasks, task.json.task] | flatten }}"
+
+      when: check.json.count == 1
   when: content.json.count == 1

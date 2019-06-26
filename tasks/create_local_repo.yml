@@ -47,7 +47,6 @@
 
 - name: create_local_repo | Waiting end of tasks
   include_tasks: wait_task.yml
-  vars:
   loop: "{{ repo_tasks }}"
   loop_control:
     loop_var: task_href
@@ -66,7 +65,6 @@
 
 - name: create_local_repo | Waiting end of tasks
   include_tasks: wait_task.yml
-  vars:
   loop: "{{ repo_tasks }}"
   loop_control:
     loop_var: task_href
