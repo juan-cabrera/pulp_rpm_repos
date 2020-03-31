@@ -28,7 +28,7 @@
     - name: upload_package | Create artifact for {{ package }}
       shell: >
         http --form -a {{ pulp_admin_user }}:{{ pulp_default_admin_password }}
-        POST {{ pulp_api_server }}/pulp/api/v3/artifacts/ file@{{ pkg_file }} < /dev/tty | jq -r '._href'
+        POST {{ pulp_api_server }}/pulp/api/v3/artifacts/ file@{{ pkg_file }} < /dev/tty | jq -r '.pulp_href'
       register: result
       changed_when: "'artifacts' in result.stdout"
 
@@ -49,12 +49,17 @@
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
         method: POST
-        body: {"_artifact":"{{ artifact.json.results[0]._href }}",
-               "filename":"{{ package }}", "relative_path":"{{ package }}"}
+        body: {"artifact":"{{ artifact.json.results[0].pulp_href }}",
+               "relative_path":"{{ package }}"}
         force_basic_auth: y
-        status_code: 201,400
+        status_code: 202
         body_format: json
-      changed_when: content.status == 201
       register: content
+      changed_when: content.status == 202
+
+    - name: upload_package | Waiting for uploading {{ package }} task
+      include_tasks: wait_task.yml
+      vars:
+        task_href: "{{ content.json.task }}"
 
   when: artifact_check.json.count == 0

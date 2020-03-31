@@ -2,7 +2,7 @@
 
 - name: publish_distribute | Get repo {{ item.repo }} HREF
   uri:
-    url: "{{ pulp_api_server }}/pulp/api/v3/repositories/?name={{ item.repo }}"
+    url: "{{ pulp_api_server }}/pulp/api/v3/repositories/rpm/rpm/?name={{ item.repo }}"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
@@ -22,11 +22,11 @@
       In case it is a **new** sync repository be sure that sync is yes
   when:
     - item.repo_version == 'latest'
-    - repo.json.results[0]._latest_version_href == none
+    - repo.json.results[0].latest_version_href == none
 
 - name: publish_distribute | Set latest version HREF
   set_fact:
-    repo_version_href: "{{ repo.json.results[0]._latest_version_href }}"
+    repo_version_href: "{{ repo.json.results[0].latest_version_href }}"
   when: item.repo_version == 'latest'
 
 - name: publish_distribute | Set {{ item.repo_version }} version HREF and check if it exists.
@@ -34,7 +34,7 @@
 
     - name: Set {{ item.repo_version }} version HREF
       set_fact:
-        repo_version_href: "{{ repo.json.results[0]._href }}versions/{{ item.repo_version }}/"
+        repo_version_href: "{{ repo.json.results[0].pulp_href }}versions/{{ item.repo_version }}/"
 
     - name: publish_distribute | Get repo {{ item.repo }} version {{ item.repo_version }}
       uri:
@@ -76,7 +76,7 @@
 
 - name: publish_distribute | Get version {{ item.repo_version }} publication HREF
   set_fact:
-    publication_href: "{{ publication_check._href }}"
+    publication_href: "{{ publication_check.pulp_href }}"
   when: publication_check != 'NOT_FOUND'
 
 - name: publish_distribute | Publication does not exist. Create it
@@ -124,7 +124,7 @@
     method: GET
     force_basic_auth: y
     status_code: 200,404
-    body_format: json
+#    body_format: json
   register: distribution_check
 
 - name: publish_distribute | Create distribution {{ item.distribution }} for repo {{ item.repo }}
@@ -143,7 +143,7 @@
 
 - name: publish_distribute | Attach (PATCH) {{ item.repo }} publication to existing {{ item.distribution }} distribution
   uri:
-    url: "{{ pulp_api_server }}{{ distribution_check.json.results[0]._href }}"
+    url: "{{ pulp_api_server }}{{ distribution_check.json.results[0].pulp_href }}"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: PATCH

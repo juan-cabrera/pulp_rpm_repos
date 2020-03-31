@@ -2,7 +2,7 @@
 
 - name: create_local_repo | Create {{ repo_name }} local repo
   uri:
-    url: "{{ pulp_api_server }}/pulp/api/v3/repositories/"
+    url: "{{ pulp_api_server }}/pulp/api/v3/repositories/rpm/rpm/"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: POST
@@ -15,7 +15,7 @@
 
 - name: create_local_repo | Get repo {{ repo_name }} HREF
   uri:
-    url: "{{ pulp_api_server }}/pulp/api/v3/repositories/?name={{ repo_name }}"
+    url: "{{ pulp_api_server }}/pulp/api/v3/repositories/rpm/rpm/?name={{ repo_name }}"
     user: "{{ pulp_admin_user }}"
     password: "{{ pulp_default_admin_password }}"
     method: GET
@@ -31,7 +31,7 @@
 - name: create_local_repo | Upload rpm packages for repo {{ repo_name }}
   include_tasks: upload_package.yml
   vars:
-    repo_href: "{{ repo.json.results[0]._href }}"
+    repo_href: "{{ repo.json.results[0].pulp_href }}"
     pkg_file: "{{ item.pkg_dir }}/{{ item.base_path }}/{{ package }}"
   loop: "{{ item.add_packages }}"
   loop_control:
@@ -40,7 +40,7 @@
 - name: create_local_repo | Add rpm packages to repo {{ repo_name }}
   include_tasks: add_package.yml
   vars:
-    repo_href: "{{ repo.json.results[0]._href }}"
+    repo_href: "{{ repo.json.results[0].pulp_href }}"
   loop: "{{ pkg_list }}"
   loop_control:
     loop_var: package
@@ -58,10 +58,11 @@
 - name: create_local_repo | Remove rpm packages to repo {{ repo_name }}
   include_tasks: remove_package.yml
   vars:
-    repo_href: "{{ repo.json.results[0]._href }}"
+    repo_href: "{{ repo.json.results[0].pulp_href }}"
   loop: "{{ item.remove_packages }}"
   loop_control:
     loop_var: package
+  when: item.remove_packages is defined
 
 - name: create_local_repo | Waiting end of tasks
   include_tasks: wait_task.yml
