@@ -12,7 +12,7 @@
 
 - name: remove_remote | Remove remote {{ item.remote }}
   uri:
-    url: "{{ pulp_api_server }}{{ remote.json.results[0]._href }}"
+    url: "{{ pulp_api_server }}{{ remote.json.results[0].pulp_href }}"
     user: admin
     password: "{{ pulp_default_admin_password }}"
     method: DELETE

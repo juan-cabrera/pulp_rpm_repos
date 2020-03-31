@@ -24,7 +24,7 @@
 
     - name: remove_package | Get Last Version HREF for repo {{ repo_name }}
       uri:
-        url: "{{ pulp_api_server }}/pulp/api/v3/repositories/?name={{ repo_name }}"
+        url: "{{ pulp_api_server }}/pulp/api/v3/repositories/rpm/rpm/?name={{ repo_name }}"
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
         method: GET
@@ -36,7 +36,7 @@
       uri:
         url: >
           {{ pulp_api_server }}/pulp/api/v3/content/rpm/packages/?repository_version={{
-           repo.json.results[0]._latest_version_href }}&pkgId={{
+           repo.json.results[0].latest_version_href }}&pkgId={{
            content.json.results[0].pkgId }}
         user: "{{ pulp_admin_user }}"
         password: "{{ pulp_default_admin_password }}"
@@ -50,11 +50,11 @@
 
         - name: remove_package | Remove package {{ package }} in repo {{ repo_name }}
           uri:
-            url: "{{ pulp_api_server }}{{ repo_href }}versions/"
+            url: "{{ pulp_api_server }}{{ repo_href }}modify/"
             user: "{{ pulp_admin_user }}"
             password: "{{ pulp_default_admin_password }}"
             method: POST
-            body: {"remove_content_units":"{{ [content.json.results[0]._href] }}"}
+            body: {"remove_content_units":"{{ [content.json.results[0].pulp_href] }}"}
             force_basic_auth: y
             status_code: 202
             body_format: json

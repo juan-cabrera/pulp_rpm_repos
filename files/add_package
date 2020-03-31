@@ -11,6 +11,23 @@ Usage: ${0##*/} [-h] --repo REPO_NAME --pakage PACKAGE [--port PORT]
 EOF
 }
 
+wait_task() {
+
+    echo $2
+    state=$(http $PORT$1 | jq -r '.state')
+    while [ "$state" == "running" ]; do
+        sleep 10
+        state=$(http $PORT$1 | jq -r '.state')
+        echo $state
+    done
+
+    if [ "$state" == "failed" ]; then
+        echo "TASK FAILED"
+        http $PORT$1
+        exit 1
+    fi
+}
+
 PORT=":24817"
 
 for i in "$@"; do
@@ -52,7 +69,7 @@ fi
 PACKAGE_NAME=${PACKAGE##*/}
 
 # get repo HREF
-REPO_HREF=$(http $PORT/pulp/api/v3/repositories/ | jq -r --arg REPO_NAME "${REPO_NAME}" '.results[] | select(.name == $REPO_NAME) | ._href')
+REPO_HREF=$(http $PORT/pulp/api/v3/repositories/rpm/rpm/ | jq -r --arg REPO_NAME "${REPO_NAME}" '.results[] | select(.name == $REPO_NAME) | .pulp_href')
 if [ -z ${REPO_HREF+x} ]; then
     echo "repo does not exist"
     exit 1
@@ -60,39 +77,41 @@ fi
 
 # check if artifact already exists
 SHA512=$(sha512sum ${PACKAGE} | awk '{print $1}')
-ARTIFACT_REF=$(http $PORT/pulp/api/v3/artifacts/?sha512=$SHA512 | jq -r --arg SHA512 "$SHA512" '.results[] | ._href')
+ARTIFACT_HREF=$(http $PORT/pulp/api/v3/artifacts/?sha512=$SHA512 | jq -r --arg SHA512 "$SHA512" '.results[] | .pulp_href')
 
-if [[ -z $ARTIFACT_REF ]]; then
+if [[ -z $ARTIFACT_HREF ]]; then
     echo "adding rpm artifact"
-    ARTIFACT_REF=$(http --form POST $PORT/pulp/api/v3/artifacts/ file@${PACKAGE} | jq -r '._href')
+    ARTIFACT_HREF=$(http --form POST $PORT/pulp/api/v3/artifacts/ file@${PACKAGE} | jq -r '.pulp_href')
 else
     echo "rpm artifact already exists"
 fi
 
 # check if content already exists
-CONTENT_HREF=$(http $PORT/pulp/api/v3/content/rpm/packages/ | jq --arg PACKAGE "${PACKAGE_NAME}" '.results[] | select(.location_href == $PACKAGE) | ._href')
+CONTENT_HREF=$(http $PORT/pulp/api/v3/content/rpm/packages/ | jq --arg PACKAGE "${PACKAGE_NAME}" '.results[] | select(.location_href == $PACKAGE) | .pulp_href')
 
 if [[ -z $CONTENT_HREF ]]; then
     echo "adding rpm content"
-    CONTENT_HREF=\"$(http POST $PORT/pulp/api/v3/content/rpm/packages/ _artifact="$ARTIFACT_REF" filename=${PACKAGE_NAME} relative_path=${PACKAGE_NAME} | jq -r '._href')\"
+    TASK=$(http POST $PORT/pulp/api/v3/content/rpm/packages/ artifact="$ARTIFACT_HREF" relative_path=${PACKAGE_NAME} | jq -r '.task')
+    wait_task $TASK "Waiting for sync to finish ..."
 else
     # Create rpm content
     echo "rpm content already exists"
 fi
  
-LAST_VERSION_REF=$(http ${PORT}${REPO_HREF} | jq -r --arg REPO_NAME "${REPO_NAME}" '._latest_version_href')
+LAST_VERSION_REF=$(http ${PORT}${REPO_HREF} | jq -r --arg REPO_NAME "${REPO_NAME}" '.latest_version_href')
 
 if [[ $LAST_VERSION_REF = "null" ]]; then
     # new repo => no last version
     LOCATION_HREF=""
 else
     LOCATION_HREF=$(http $PORT/pulp/api/v3/content/rpm/packages/?repository_version=$LAST_VERSION_REF \
-                    | jq -r --arg PACKAGE "${PACKAGE_NAME}" '.results[] | select(.location_href == $PACKAGE) | .location_href')
+                    | jq -r --arg PACKAGE "${PACKAGE_NAME}" '.results[] | select(.location_href == $PACKAGE) | .pulp_href')
 fi
 
 if [[ $LOCATION_HREF == $PACKAGE_NAME ]]; then
     echo "Package already in repo"
 else
     echo "Adding package in repo"
-    http POST ${PORT}${REPO_HREF}versions/ add_content_units:="[${CONTENT_HREF}]" | jq -r
+    TAKS=$(http POST ${PORT}${REPO_HREF}modify/ add_content_units:="[${CONTENT_HREF}]" | jq -r)
+    wait_task $TASK "Waiting for sync to finish ..."
 fi

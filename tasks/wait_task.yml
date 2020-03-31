@@ -9,7 +9,7 @@
     force_basic_auth: y
     status_code: 200
   register: task
-  until: task.json.state != "running"
+  until: task.json.state != "running" and task.json.state != "waiting"
   changed_when: "'completed' in task.json.state"
   retries: 120
   delay: 10

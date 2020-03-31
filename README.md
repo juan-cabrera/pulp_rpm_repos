@@ -10,12 +10,11 @@ You can install the pulp-server using the
 This role has been tested with this versions of pulp:
 
 ```yaml
-    pulp_source_dir: "git+https://github.com/pulp/pulpcore.git@3.0.0rc2"
-    pulp_plugin_source_dir: "git+https://github.com/pulp/pulpcore-plugin.git@0.1.0rc2"
+    pulp_source_dir: "git+https://github.com/pulp/pulpcore.git@3.2.1"
     pulp_install_plugins:
       pulp-rpm:
         app_label: "rpm"
-        source_dir: "git+https://github.com/pulp/pulp_rpm.git@3.0.0b3"
+        source_dir: "git+https://github.com/pulp/pulp_rpm.git@3.2.0"
 ```
 
 If you want to run the tasks of this role in a different host than the

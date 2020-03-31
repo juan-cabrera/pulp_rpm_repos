@@ -23,4 +23,8 @@ tags
 # Persistent undo
 [._]*.un~
 
+# IDEs
+.idea
+.vscode
+
 # End of https://www.gitignore.io/api/vim,ansible
